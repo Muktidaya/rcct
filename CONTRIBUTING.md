@@ -10,7 +10,10 @@ stubs.
 
 Run formatting, Clippy with warnings denied, tests (including doctests), a
 warnings-denied documentation build, and `cargo package --locked` before a
-release. Verify the Rust 1.85 minimum as well as the current stable toolchain.
+release. Use the pinned Rust 1.99.1 toolchain from `rust-toolchain.toml` and
+verify the rolling stable toolchain as CI does. Update the project toolchain,
+Cargo minimum, CI matrix, and documentation together when adopting a newer
+stable release; do not change the machine-wide default for this project.
 
 Document coordinate conventions, invalid inputs, tolerance decisions, overflow,
 and degeneracy at the relevant API. Tests should include boundary and failure

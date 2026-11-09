@@ -50,7 +50,12 @@ LGPL-licensed OCCT source. See
 
 ## Build and check
 
-Requires Rust 1.85 or newer (edition 2024).
+The repository pins **Rust 1.99.1**, the latest stable release verified on
+2026-11-09 against the [official stable channel manifest](https://static.rust-lang.org/dist/channel-rust-stable.toml).
+`rust-toolchain.toml` selects the minimal profile plus `rustfmt` and Clippy;
+ordinary `cargo` commands use that project toolchain without changing the
+machine-wide default. The current development minimum is also Rust 1.99.1
+(edition 2024). The published 0.1.0 release retains its original Rust 1.85 minimum.
 
 ```sh
 cargo fmt --all -- --check
@@ -60,8 +65,8 @@ RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --all-features
 cargo package --locked
 ```
 
-CI checks the declared minimum Rust version and stable Rust. This crate does not
-require an OCCT installation or a C++ toolchain.
+CI checks the pinned Rust 1.99.1 toolchain and the rolling stable channel. This
+crate does not require an OCCT installation or a C++ toolchain.
 
 ## Assurance boundaries
 

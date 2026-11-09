@@ -2,7 +2,7 @@
 name = "rcct"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.99.1"
 description = "Pure-Rust geometry foundations for an independent CAD kernel"
 license = "Apache-2.0"
 repository = "https://github.com/Muktidaya/rcct"
@@ -10,7 +10,7 @@ documentation = "https://docs.rs/rcct"
 readme = "README.md"
 keywords = ["cad", "geometry", "occt", "brep"]
 categories = ["mathematics", "graphics"]
-include = ["src/**", "tests/**", "examples/**", "Cargo.toml", "Cargo.lock", "README.md", "CHANGELOG.md", "NOTICE.md", "LICENSE"]
+include = ["src/**", "tests/**", "examples/**", "Cargo.toml", "Cargo.lock", "README.md", "CHANGELOG.md", "NOTICE.md", "LICENSE", "rust-toolchain.toml"]
 
 [dependencies]
 
