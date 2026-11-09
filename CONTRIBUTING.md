@@ -25,6 +25,20 @@ Fixture inputs are exact `f64` bit patterns. Regenerate fixtures with the checke
 Python standard-library tool; do not hand-edit them or derive the reference by
 calling rcct. A finite test corpus is evidence, not a universal error bound.
 
+## Source documentation
+
+Keep public contracts in rustdoc at the relevant type or operation. Use inline
+comments for non-obvious implementation constraints, such as normalization's
+validation order and overflow avoidance, rather than narrating each expression.
+Examples should exercise the contract and identify when convenient exact inputs
+hide general floating-point rounding. Run doctests and warnings-denied rustdoc
+after a documentation pass, including on the supported minimum toolchain.
+
+When numerical behavior changes, reconcile source docs with the README,
+[contract](docs/numerics.md), fixture notes, and verification record. Record CI
+results against an exact commit; a green earlier revision does not verify later
+changes. Do not weaken a numerical budget simply to make a new platform pass.
+
 ## Provenance
 
 Contributions are made under `Apache-2.0`. Keep implementations original or use

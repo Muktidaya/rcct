@@ -49,6 +49,28 @@ use std::ops::{Add, Div, Mul, Neg, Sub};
 /// exact floating-point equality: signed zeros are equal and NaNs are unequal.
 /// Translation and subtraction perform ordinary rounded component operations;
 /// see the [module numerical contract](self#numerical-contract).
+///
+/// # Displacement between locations
+///
+/// `end - start` points from `start` toward `end`; reversing the subtraction
+/// reverses the displacement. Choose an origin explicitly when a location must
+/// be expressed as a vector. The crate does not identify points with vectors.
+///
+/// ```
+/// use rcct::gp::{Point3, Vector3};
+///
+/// let start = Point3::new(1.0, 2.0, 3.0);
+/// let end = Point3::new(4.0, 6.0, 3.0);
+/// let displacement = end - start;
+/// assert_eq!(displacement, Vector3::new(3.0, 4.0, 0.0));
+/// assert_eq!(start + displacement, end);
+/// assert_eq!(end - displacement, start);
+/// assert_eq!(start - Point3::ORIGIN, Vector3::new(1.0, 2.0, 3.0));
+/// ```
+///
+/// These small integer coordinates make the example exact; in general,
+/// floating-point rounding means translation and subtraction need not undo
+/// each other exactly.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Point3 {
     /// Coordinate along the x axis.
@@ -281,6 +303,10 @@ pub struct UnitDirection3(Vector3);
 
 impl UnitDirection3 {
     /// Returns the normalized, dimensionless components by value.
+    ///
+    /// The returned vector is an independent copy: modifying or scaling it does
+    /// not change this direction. Multiplying it by a caller-chosen length gives
+    /// a displacement in that length's units, subject to ordinary rounding.
     pub const fn as_vector(self) -> Vector3 {
         self.0
     }
@@ -300,6 +326,8 @@ impl TryFrom<Vector3> for UnitDirection3 {
     /// is applied implicitly; callers needing a minimum magnitude must check it
     /// separately before construction.
     fn try_from(value: Vector3) -> Result<Self, Self::Error> {
+        // Validate before reducing with f64::max: max can ignore a NaN operand,
+        // so a finite scale alone would not establish finite input components.
         if !value.is_finite() {
             return Err(DirectionError::NonFinite);
         }
@@ -307,7 +335,11 @@ impl TryFrom<Vector3> for UnitDirection3 {
         if scale == 0.0 {
             return Err(DirectionError::ZeroVector);
         }
+        // Divide components directly. Multiplying by scale.recip() instead
+        // would overflow that reciprocal for sufficiently small subnormal scale.
         let scaled = value / scale;
+        // Keep the norm in scaled coordinates. Reconstructing scale * norm
+        // could overflow even though the direction itself is representable.
         Ok(Self(scaled / scaled.norm()))
     }
 }

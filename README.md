@@ -3,7 +3,7 @@
 An independent **pure-Rust CAD-kernel project**, starting with a small geometry
 foundation and using Open CASCADE Technology (OCCT) as a functional reference.
 
-**Status: early development.** Version 0.1.1 provides tested 3D points, vectors,
+**Status: early development, v0.1.1 release candidate.** The crate provides 3D points, vectors,
 and checked unit directions. It is not a CAD kernel yet, is not API-compatible
 with OCCT, and cannot import, model, mesh, or export CAD solids. There are no C++
 bindings, native OCCT dependencies, build scripts, or third-party Rust dependencies.
@@ -34,6 +34,40 @@ See the API documentation and [numerical contract](docs/numerics.md) for
 operation-specific behavior, conditioning, exceptional cases, and units.
 [Verification notes](docs/verification.md) distinguish tested acceptance budgets
 from universal guarantees and record which platforms were actually run.
+
+## Documentation and examples
+
+Choose the type by what the value represents:
+
+| Type | Meaning | Important responsibility |
+| --- | --- | --- |
+| `Point3` | A location in a chosen frame | Subtract another point to obtain a displacement; do not add or scale locations as vectors. |
+| `Vector3` | A displacement with magnitude | Retain it for translation; its components are unchecked `f64` values. |
+| `UnitDirection3` | A checked direction with magnitude discarded | Construction rejects zero/nonfinite vectors; its components are dimensionless. |
+
+Frames and units are caller-owned, not encoded in these types. The source-level
+rustdoc includes an executable `end - start` example and explains why floating-
+point translation and subtraction need not undo each other exactly. Source
+comments also explain the numerical reasons behind normalization's validation
+order and direct component division.
+
+- [Numerical contract](docs/numerics.md): operation semantics, conditioning,
+  exceptional inputs, and normalization limits.
+- [Verification record](docs/verification.md): independent references,
+  acceptance budgets, tagged-source compatibility checks, and exact CI evidence.
+- [Contribution guide](CONTRIBUTING.md): checks and source-provenance requirements.
+- [Displacement example](examples/displacement.rs): a small runnable translation,
+  distance, and direction example.
+
+```sh
+cargo run --example displacement
+cargo test --doc
+cargo doc --no-deps --all-features
+```
+
+Open `target/doc/rcct/index.html` for documentation built from the current
+checkout. The hosted [API documentation](https://docs.rs/rcct) describes the
+published crate and may lag this release candidate.
 
 ## Scope and development direction
 
@@ -82,8 +116,9 @@ python3 tools/check_package.py
 
 CI configures the Rust 1.85 minimum, pinned Rust 1.99.1, and rolling stable
 channel across Linux, macOS, and Windows, including Linux/macOS ARM64, with
-debug and release tests. Configuration is not evidence that every hosted job
-has run; see the [verification record](docs/verification.md). This crate does
+debug and release tests. The numerical-verification commit passed all 14 hosted
+jobs; see the [verification record](docs/verification.md) for the exact revision,
+run link, and the requirement to recheck later commits. This crate does
 not require an OCCT installation or a C++ toolchain. The fixture generator and
 package/downstream checker use Python 3.9+ standard-library tools only.
 

@@ -63,6 +63,12 @@ underflow to signed zero. Positive rescaling need not preserve identical output
 bits, and no fixed angular-error bound is promised. A caller requiring a minimum
 magnitude must check its own explicitly chosen threshold before construction.
 
+The source comments preserve three maintenance constraints: validate every
+component before `f64::max` can ignore a NaN, divide components directly rather
+than multiply by a possibly overflowing reciprocal, and never reconstruct the
+possibly overflowing original length just to normalize. These are reasons for
+the existing evaluation order, not additional geometric guarantees.
+
 ## Accuracy is not conditioning
 
 Cancellation can make a tiny exact dot or cross product unresolvable even when

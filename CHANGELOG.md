@@ -12,6 +12,10 @@
   the already-adopted Rust 1.99.1 pin without making it the package minimum.
 - Document verification evidence and limitations without claiming safety
   qualification or robust geometric predicates.
+- Add a source-comment/rustdoc pass explaining affine subtraction, frame/unit
+  responsibilities, direction copies, and normalization maintenance hazards;
+  update the README, contributor guidance, and verification record together.
+  The additional example is doctested; runtime behavior is unchanged.
 
 ## Planned v0.2.0 scope
 

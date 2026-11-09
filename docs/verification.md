@@ -104,13 +104,25 @@ The workflow configures both profiles and package/downstream checks for:
 | `macos-15` | ARM64 | 1.85.0, 1.99.1, stable |
 | `windows-2022` | x86-64 | 1.85.0, 1.99.1, stable |
 
-Linux and Windows jobs, and the hosted macOS jobs, have **not** run for this
-candidate at the time this record was written. Runner availability and all
-hosted results remain release gates. Before publication, run the full matrix on
-the exact outgoing commit, review failures without silently loosening budgets,
-repeat clean packaging, and review source/history for unintended disclosure.
-Windows ARM64, macOS x86-64, other architectures, changed floating-point modes,
-and broader Rust versions are not established by this record.
+The numerical-verification commit
+[`7691b52ca1c29aa3b110be82a9c04e34ac22c288`](https://github.com/Muktidaya/rcct/commit/7691b52ca1c29aa3b110be82a9c04e34ac22c288)
+passed [CI run 42683054858, attempt 1](https://github.com/Muktidaya/rcct/actions/runs/42683054858)
+on 2026-11-09. All 14 expected jobs completed successfully: the 12 matrix jobs
+above and two quality jobs for Rust 1.99.1/stable. None were skipped, failed, or
+missing. Final clean package/downstream checks also passed locally on the three
+listed toolchains for that commit.
+
+The subsequent source-comment/documentation pass adds one doctest, taking the
+suite to 15 integration tests and 3 doctests, without changing implementation
+expressions. Its local tests, documentation, and package checks are separate
+from the hosted result above. That earlier green run does not establish hosted
+results for a later documentation commit.
+
+Before publication, run the full matrix on the exact outgoing commit, review
+failures without silently loosening budgets, repeat clean packaging, and review
+source/history for unintended disclosure. Windows ARM64, macOS x86-64, other
+architectures, changed floating-point modes, and broader Rust versions are not
+established by this record.
 
 B-rep, Boolean operations, a broad geometry API, and the required Rust 1.99.1
 baseline belong to the planned v0.2.0 scope. This release establishes only the
