@@ -12,7 +12,7 @@ bindings, native OCCT dependencies, build scripts, or third-party Rust dependenc
 
 ```toml
 [dependencies]
-rcct = "0.1"
+rcct = "0.1.1"
 ```
 
 ```rust
