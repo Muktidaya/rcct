@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Rust ${{ matrix.toolchain }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        toolchain: ["1.85.0", "stable"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        run: rustup toolchain install "${{ matrix.toolchain }}" --profile minimal --component rustfmt --component clippy
+      - name: Format
+        run: cargo +${{ matrix.toolchain }} fmt --all -- --check
+      - name: Lint
+        run: cargo +${{ matrix.toolchain }} clippy --all-targets --all-features -- -D warnings
+      - name: Test and doctest
+        run: cargo +${{ matrix.toolchain }} test --locked --all-features
+      - name: Documentation
+        env:
+          RUSTDOCFLAGS: "-D warnings"
+        run: cargo +${{ matrix.toolchain }} doc --no-deps --all-features
+      - name: Package
+        run: cargo +${{ matrix.toolchain }} package --locked
