@@ -9,15 +9,21 @@ stubs.
 ## Checks
 
 Run formatting, Clippy with warnings denied, tests (including doctests), a
-warnings-denied documentation build, and `cargo package --locked` before a
-release. Use the pinned Rust 1.99.1 toolchain from `rust-toolchain.toml` and
-verify the rolling stable toolchain as CI does. Update the project toolchain,
-Cargo minimum, CI matrix, and documentation together when adopting a newer
-stable release; do not change the machine-wide default for this project.
+warnings-denied documentation build, deterministic fixture regeneration, and
+`python3 tools/check_package.py` before a release. Run tests in both debug and
+release profiles. Use the pinned Rust 1.99.1 development toolchain and separately
+verify the supported Rust 1.85 minimum and rolling stable toolchain as CI does.
+The development pin does not raise the package minimum. The required 1.99.1
+migration belongs to the planned v0.2.0 scope, not v0.1.1. Do not change the
+machine-wide default for this project.
 
 Document coordinate conventions, invalid inputs, tolerance decisions, overflow,
 and degeneracy at the relevant API. Tests should include boundary and failure
 cases. Approximate numerical assertions need an explicit justified tolerance.
+See [the numerical contract](docs/numerics.md) and [verification record](docs/verification.md).
+Fixture inputs are exact `f64` bit patterns. Regenerate fixtures with the checked-in
+Python standard-library tool; do not hand-edit them or derive the reference by
+calling rcct. A finite test corpus is evidence, not a universal error bound.
 
 ## Provenance
 

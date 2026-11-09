@@ -3,7 +3,7 @@
 An independent **pure-Rust CAD-kernel project**, starting with a small geometry
 foundation and using Open CASCADE Technology (OCCT) as a functional reference.
 
-**Status: early development.** Version 0.1.0 provides tested 3D points, vectors,
+**Status: early development.** Version 0.1.1 provides tested 3D points, vectors,
 and checked unit directions. It is not a CAD kernel yet, is not API-compatible
 with OCCT, and cannot import, model, mesh, or export CAD solids. There are no C++
 bindings, native OCCT dependencies, build scripts, or third-party Rust dependencies.
@@ -30,17 +30,27 @@ The `gp` module distinguishes points, displacement vectors, and unit directions.
 Point and vector coordinates are ordinary `f64` values and permit nonfinite
 inputs. Direction construction rejects zero and nonfinite vectors. Units are
 chosen by the caller; there is no implicit tolerance or robust-predicate claim.
-See the API documentation for numerical behavior and exceptional cases.
+See the API documentation and [numerical contract](docs/numerics.md) for
+operation-specific behavior, conditioning, exceptional cases, and units.
+[Verification notes](docs/verification.md) distinguish tested acceptance budgets
+from universal guarantees and record which platforms were actually run.
 
 ## Scope and development direction
 
 The current release is an original Rust implementation of elementary geometry.
 OCCT is a functional reference, not a runtime dependency or an architectural
 constraint. The goal is a Rust-native design that can improve on reference
-implementations rather than reproduce their source, API, or internal structure. The intended direction is geometry and numerical foundations,
-then curves and surfaces, topology and boundary representation, modeling
-algorithms, and exchange formats. These later layers are unimplemented; this
-outline is not a compatibility guarantee or delivery schedule.
+implementations rather than reproduce their source, API, or internal structure.
+
+- **v0.1.1:** numerical contracts and independent verification of the existing
+  point/vector/direction API, preserving source compatibility and Rust 1.85.
+- **v0.2.0 planned scope:** a broad geometry API, boundary representation (B-rep),
+  Boolean operations, and migration of the supported toolchain/minimum to
+  Rust 1.99.1. These capabilities are not implemented by v0.1.1.
+- **Later direction:** additional modeling algorithms and exchange formats.
+
+The roadmap is a statement of intended scope, not an OCCT compatibility promise,
+safety assurance, completed implementation, or delivery schedule.
 
 Development should preserve explicit ownership, geometric invariants, numerical
 contracts, and source provenance. Implementations must remain independent and
@@ -54,19 +64,28 @@ The repository pins **Rust 1.99.1**, the latest stable release verified on
 2026-11-09 against the [official stable channel manifest](https://static.rust-lang.org/dist/channel-rust-stable.toml).
 `rust-toolchain.toml` selects the minimal profile plus `rustfmt` and Clippy;
 ordinary `cargo` commands use that project toolchain without changing the
-machine-wide default. The current development minimum is also Rust 1.99.1
-(edition 2024). The published 0.1.0 release retains its original Rust 1.85 minimum.
+machine-wide default. This development-toolchain selection does **not** raise
+v0.1.1's supported minimum: `rust-version = "1.85"` preserves the published
+v0.1.0 minimum (edition 2024). CI and local checks exercise that minimum
+separately. Making Rust 1.99.1 the required minimum is planned for v0.2.0.
 
 ```sh
 cargo fmt --all -- --check
 cargo clippy --all-targets --all-features -- -D warnings
-cargo test --all-features
+cargo test --locked --all-features
+cargo test --locked --all-features --release
+cargo +1.85.0 test --locked --all-features
 RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --all-features
-cargo package --locked
+python3 tools/generate_numeric_fixtures.py --check
+python3 tools/check_package.py
 ```
 
-CI checks the pinned Rust 1.99.1 toolchain and the rolling stable channel. This
-crate does not require an OCCT installation or a C++ toolchain.
+CI configures the Rust 1.85 minimum, pinned Rust 1.99.1, and rolling stable
+channel across Linux, macOS, and Windows, including Linux/macOS ARM64, with
+debug and release tests. Configuration is not evidence that every hosted job
+has run; see the [verification record](docs/verification.md). This crate does
+not require an OCCT installation or a C++ toolchain. The fixture generator and
+package/downstream checker use Python 3.9+ standard-library tools only.
 
 ## Assurance boundaries
 

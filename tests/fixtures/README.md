@@ -1,0 +1,45 @@
+# Numerical oracle fixtures
+
+These fixtures are original Apache-2.0 test material derived from elementary
+Cartesian formulas, not OCCT code or datasets. `numerical.tsv` contains 128
+operation cases: 21 norms, 21 normalizations, 27 dots, 27 crosses and 32 distances.
+Inputs, rounded expected values and absolute error budgets are binary64 bit
+patterns. Signed-zero assertions and nonfinite classification live separately in
+`tests/numerical_oracles.rs`; a real-number oracle cannot specify zero signs.
+
+Regenerate with `python3 tools/generate_numeric_fixtures.py`, or validate without
+writing with `python3 tools/generate_numeric_fixtures.py --check`. Only the Python
+standard library is needed (Python 3.9+). Rational inputs are reconstructed
+exactly with `Fraction.from_float`. Products, sums, and coordinate differences
+are exact rational operations. Square roots and normalized components use
+Decimal at 1800 significant digits. Generation must agree byte-for-byte with a
+second 2000-digit pass. This is a precision stability check, not a proof of
+correct rounding for every possible input. No platform `hypot` or floating-point
+square root is used in the oracle. Fixtures carry no timestamp or random seed.
+
+## Acceptance budgets
+
+These are empirical release test thresholds, not universal API accuracy claims.
+Rust's platform-dependent `f64::hypot` does not promise a fixed ULP accuracy.
+
+- Norm: 4 ULPs of the rounded real result, allowing both nested hypot roundings
+  and modest platform variation. At zero/subnormal results an ULP is 2^-1074.
+- Normalized component: 8 ULPs plus 4 * 2^-1074. This allows scaling, both hypot
+  calls, final division and rounded-oracle error, with an absolute floor when a
+  scaled or final component underflows. Components are checked individually.
+- Dot and each cross component: 8 * 2^-53 * sum(abs(exact products)) plus
+  8 * 2^-1074, rounded upward. The usual gamma_5 bound for three multiplies and
+  two additions is below 6u, where u=2^-53, provided intermediates stay finite;
+  the remaining allowance includes oracle rounding. Cross uses fewer operations.
+  The absolute floor covers gradual underflow. This deliberately uses the
+  magnitudes before cancellation, not relative error against a nearly zero result.
+- Distance: 8 ULPs, allowing rounded coordinate subtraction and nested hypot.
+  Adjacent-coordinate cases have exactly representable subtraction and a single
+  nonzero axis; their budget is zero.
+
+The deterministic exponent grid includes normal/subnormal boundaries and
+extreme scale separation, with explicit near-parallel, cancellation and signed
+zero inputs. Intermediate-overflow cases are excluded from finite accuracy
+bounds and tested for their documented classifications instead. No global
+geometric tolerance, robust predicate, exhaustive coverage or formal
+verification is implied.

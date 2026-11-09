@@ -9,24 +9,53 @@ permissions:
 
 jobs:
   test:
-    name: Rust ${{ matrix.toolchain }}
-    runs-on: ubuntu-latest
+    name: ${{ matrix.os }} / Rust ${{ matrix.toolchain }} / debug + release
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
+      matrix:
+        # Explicit ARM64 Linux and macOS runners; Windows remains x86-64.
+        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-15, windows-2022]
+        toolchain: ["1.85.0", "1.99.1", "stable"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # The downstream check also builds the v0.1.0 tag.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Rust
+        run: rustup toolchain install "${{ matrix.toolchain }}" --profile minimal
+      - name: Record compiler and architecture
+        run: rustc +${{ matrix.toolchain }} --version --verbose
+      - name: Debug tests and doctests
+        run: cargo +${{ matrix.toolchain }} test --locked --offline --all-features
+      - name: Release tests and doctests
+        run: cargo +${{ matrix.toolchain }} test --locked --offline --all-features --release
+      - name: Packaged crate and v0.1.0 downstream compatibility (both profiles)
+        run: python tools/check_package.py --toolchain "${{ matrix.toolchain }}"
+
+  quality:
+    name: Quality / Rust ${{ matrix.toolchain }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
       matrix:
         toolchain: ["1.99.1", "stable"]
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
       - name: Install Rust
         run: rustup toolchain install "${{ matrix.toolchain }}" --profile minimal --component rustfmt --component clippy
       - name: Format
         run: cargo +${{ matrix.toolchain }} fmt --all -- --check
       - name: Lint
-        run: cargo +${{ matrix.toolchain }} clippy --all-targets --all-features -- -D warnings
-      - name: Test and doctest
-        run: cargo +${{ matrix.toolchain }} test --locked --all-features
+        run: cargo +${{ matrix.toolchain }} clippy --locked --offline --all-targets --all-features -- -D warnings
       - name: Documentation
         env:
           RUSTDOCFLAGS: "-D warnings"
-        run: cargo +${{ matrix.toolchain }} doc --no-deps --all-features
-      - name: Package
-        run: cargo +${{ matrix.toolchain }} package --locked
+        run: cargo +${{ matrix.toolchain }} doc --locked --offline --no-deps --all-features
+      - name: Reproduce independent numerical fixtures
+        run: python tools/generate_numeric_fixtures.py --check

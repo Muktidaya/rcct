@@ -2,7 +2,7 @@
 
 //! Experimental, dependency-free geometry foundations for a pure-Rust CAD kernel.
 //!
-//! This initial release implements Cartesian primitives, not a complete CAD
+//! This crate implements Cartesian primitives, not a complete CAD
 //! kernel or an API-compatible replacement for Open CASCADE Technology (OCCT).
 //! Coordinates have caller-chosen units and share one right-handed frame.
 //!

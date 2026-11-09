@@ -12,11 +12,43 @@
 //! is exact floating-point equality, not a geometric tolerance test. No global
 //! tolerance or model scale is assumed; callers choose tolerances for their own
 //! algorithms. Only [`UnitDirection3`] enforces finite, nonzero input.
+//!
+//! # Numerical contract
+//!
+//! | Operation | Meaning and evaluation | Important limit |
+//! | --- | --- | --- |
+//! | Point/vector `+`, `-`, scalar `*`, `/` | Componentwise `f64` operations | No validation, clamping, or zero-divisor check |
+//! | [`Vector3::dot`] | `(x*other.x + y*other.y) + z*other.z` | Rounded products and sums, not an exact predicate |
+//! | [`Vector3::cross`] | Right-handed component determinants | Cancellation can lose a near-parallel result |
+//! | [`Vector3::norm`] | `x.hypot(y).hypot(z)` | Platform-dependent precision, possible final overflow |
+//! | [`Point3::distance`] | Subtract coordinates, then take the norm | Subtraction can overflow or lose a small separation |
+//! | [`UnitDirection3::try_from`] | Validate, scale by largest magnitude, normalize | Rounding can erase relatively tiny components |
+//!
+//! If coordinates have units `U`, displacements and distances also have units
+//! `U`; dot and cross products of two such vectors have units `U²`. Unit
+//! directions are dimensionless. These are caller obligations, not types
+//! enforced by the crate. Scalars carry whatever units the caller assigns.
+//!
+//! Signed zeros are accepted and compare equal. Componentwise arithmetic
+//! retains their ordinary floating-point behavior, but there is no geometric
+//! distinction between them or canonicalization step. NaN sign and payload are
+//! not part of the contract. No operation establishes parallelism, orthogonality,
+//! coincidence, or orientation robustly for arbitrary inputs.
+//!
+//! See the repository's [numerical contract and verification notes](
+//! https://github.com/Muktidaya/rcct/blob/root/docs/numerics.md) for conditioning,
+//! independent reference tests, and the distinction between test budgets and
+//! mathematical guarantees.
 
 use std::fmt;
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
 /// A location in a three-dimensional Cartesian coordinate frame.
+///
+/// Public coordinates are unrestricted `f64` values. Equality is componentwise
+/// exact floating-point equality: signed zeros are equal and NaNs are unequal.
+/// Translation and subtraction perform ordinary rounded component operations;
+/// see the [module numerical contract](self#numerical-contract).
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Point3 {
     /// Coordinate along the x axis.
@@ -44,14 +76,23 @@ impl Point3 {
     /// Returns Euclidean distance in coordinate units.
     ///
     /// Uses [`Vector3::norm`] after coordinate subtraction. Finite points can
-    /// produce infinity if their separation exceeds the representable range;
-    /// subtraction involving nonfinite coordinates follows IEEE 754 semantics.
+    /// produce infinity if their separation exceeds the representable range.
+    /// Coordinates already rounded to the same `f64` cannot recover a smaller
+    /// separation. Subtraction involving nonfinite coordinates follows IEEE 754
+    /// semantics: in particular `infinity - infinity` produces NaN. The resulting
+    /// norm applies its documented infinity/NaN precedence. No coincidence
+    /// tolerance or unit conversion is applied.
     pub fn distance(self, other: Self) -> f64 {
         (other - self).norm()
     }
 }
 
 /// A displacement in a three-dimensional Cartesian coordinate frame.
+///
+/// Public components are unrestricted `f64` values. Equality is componentwise
+/// exact floating-point equality, not approximate geometric equivalence.
+/// Arithmetic operators act componentwise without checking overflow, nonfinite
+/// input, or division by zero. See the [module numerical contract](self#numerical-contract).
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Vector3 {
     /// Component along the x axis.
@@ -78,8 +119,12 @@ impl Vector3 {
 
     /// Returns `x*other.x + y*other.y + z*other.z`.
     ///
-    /// Intermediate products can overflow or underflow; this is not an exact
-    /// predicate and does not use compensated arithmetic.
+    /// Evaluation is `(x*other.x + y*other.y) + z*other.z`, with separately
+    /// rounded products and sums, not fused or compensated arithmetic.
+    /// Intermediate products and sums can overflow or underflow even when the
+    /// exact result is representable. Opposite infinities can produce NaN even
+    /// from finite inputs. Cancellation can destroy relative accuracy near zero;
+    /// the result is not a robust orthogonality or sign predicate.
     pub fn dot(self, other: Self) -> f64 {
         self.x * other.x + self.y * other.y + self.z * other.z
     }
@@ -87,8 +132,12 @@ impl Vector3 {
     /// Returns the right-handed cross product `self × other`.
     ///
     /// In particular, the positive x axis crossed with the positive y axis
-    /// yields the positive z axis. Intermediate products can overflow or
-    /// underflow; near-parallel inputs are not snapped to zero.
+    /// yields the positive z axis. Components are evaluated as
+    /// `(y*other.z - z*other.y, z*other.x - x*other.z, x*other.y - y*other.x)`.
+    /// Products and differences round separately. They can overflow or underflow,
+    /// and `infinity - infinity` can produce NaN even from finite inputs.
+    /// Cancellation can destroy relative accuracy for near-parallel inputs;
+    /// results are not snapped to zero and do not robustly decide parallelism.
     pub fn cross(self, other: Self) -> Self {
         Self::new(
             self.y * other.z - self.z * other.y,
@@ -106,7 +155,12 @@ impl Vector3 {
     /// infinite component always yields infinity; even with no infinite input,
     /// overflow in the first step can mask a NaN z component (for example,
     /// `(f64::MAX, f64::MAX, f64::NAN)` yields infinity). Otherwise a NaN
-    /// component yields NaN.
+    /// component yields NaN. An all-zero vector has positive-zero length.
+    ///
+    /// [`f64::hypot`] has unspecified precision that can vary by platform and
+    /// Rust version; this method promises neither correct rounding nor a fixed
+    /// ULP bound. The verification suite's error budgets are empirical acceptance
+    /// criteria for tested cases, not universal bounds.
     pub fn norm(self) -> f64 {
         self.x.hypot(self.y).hypot(self.z)
     }
@@ -209,7 +263,11 @@ impl std::error::Error for DirectionError {}
 /// Construct with [`TryFrom<Vector3>`]. Zero and nonfinite inputs are errors;
 /// there is no near-zero cutoff. Even the smallest positive subnormal input can
 /// define a direction. Private storage prevents mutation of the unit invariant.
-/// Normalization can round components too small relative to the largest to zero.
+/// Normalization can round components too small relative to the largest to zero,
+/// including signed zero. The result is dimensionless; it need not have a norm
+/// whose floating-point representation is exactly `1.0`. Equality remains exact
+/// component equality, so differently scaled inputs need not produce identical
+/// bits. No fixed angular-error bound is promised.
 ///
 /// ```
 /// use rcct::gp::{DirectionError, UnitDirection3, Vector3};
@@ -235,8 +293,12 @@ impl TryFrom<Vector3> for UnitDirection3 {
     ///
     /// Dividing by the largest absolute component first puts every component
     /// in `[-1, 1]` and at least one at magnitude one. The subsequent norm is
-    /// therefore in `[1, sqrt(3)]`, avoiding overflow and a zero divisor even
-    /// for subnormal inputs. Nonfinite validation precedes the zero test.
+    /// mathematically in `[1, sqrt(3)]` (subject to rounding), avoiding overflow
+    /// and a zero divisor even for subnormal inputs. The final division uses this
+    /// scaled norm rather than the potentially overflowing original length.
+    /// Nonfinite validation precedes the zero test. No caller-selected tolerance
+    /// is applied implicitly; callers needing a minimum magnitude must check it
+    /// separately before construction.
     fn try_from(value: Vector3) -> Result<Self, Self::Error> {
         if !value.is_finite() {
             return Err(DirectionError::NonFinite);
