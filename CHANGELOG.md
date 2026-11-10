@@ -4,6 +4,9 @@
 
 - Group faces with bridge excursions when each filtered boundary is empty or
   one simple cycle, retaining original half-edge ownership.
+- Add checked finite 3D points, segments, closed bounds, and fallible rounded
+  line and plane evaluations; exact 3D predicates and topology remain future work.
+
 - Classify finite raw points against selected 2D regions with exact boundary
   incidence, half-open ray crossing and a preflight edge-check budget.
 - Analyze connected components and merged graph-edge bridges with an iterative,
