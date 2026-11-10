@@ -68,6 +68,8 @@ order and direct component division.
   constructed-input, resource and arrangement gates.
 - [Bounded constructed predicates](docs/constructed-predicates.md): supported
   first-generation orientation and original-support span split contracts.
+- [Original-support span intersections](docs/span-intersection.md): exact
+  clipping against raw cutters, query budgets and scope.
 - [Arithmetic backend evaluation](docs/arithmetic-backend-evaluation.md):
   preliminary license, dependency and unsafe-code tradeoffs.
 - [Verification record](docs/verification.md): independent references,
@@ -136,6 +138,7 @@ python3 tools/generate_parameter_enclosures.py --check
 python3 tools/generate_crossing_coordinate_enclosures.py --check
 python3 tools/generate_crossing_point_order.py --check
 python3 tools/generate_constructed_orientation.py --check
+python3 tools/generate_span_query_fixtures.py --check
 python3 tools/check_package.py
 ```
 

@@ -5,9 +5,11 @@ parameters on one directed segment, retain exact rational proper-crossing
 points, compare those points with each other and with binary64 input points,
 and produce tight parameter and crossing-coordinate enclosures. These are
 bounded first-generation constructions. `SegmentSpan2` can repeatedly split a
-parameter span on one original raw input segment at retained parameters. It
-does not accept an exact crossing point as a new segment endpoint or intersect
-arbitrary constructed segments, and an enclosure is not an exact point identity.
+parameter span on one original raw input segment at retained parameters, and
+intersect that span with a raw cutter under a query budget. It does not accept
+an exact crossing point as an arbitrary segment endpoint or intersect arbitrary
+constructed segments, and an enclosure is not an exact point identity. See
+the [span intersection contract](span-intersection.md).
 `orient_constructed2d` handles raw and first-generation crossing points under a
 fixed caller budget; see [its contract](constructed-predicates.md).
 
@@ -41,7 +43,8 @@ incidence handling. Construction should operate in a draft and publish only afte
 all required comparisons, splits and structural checks succeed within budget.
 
 No arrangement or general rational intersection API is provided by the current
-crate. The original-support span split is narrower than general repeated cuts.
+crate. Original-support span splitting and raw-cutter queries are narrower than
+general repeated cuts.
 Required evidence includes independent rational oracles for
 second and later cuts, equivalent unreduced representations, exact equality
 across distinct sources, collinear overlap and coincident events, exponent and

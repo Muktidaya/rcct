@@ -71,7 +71,8 @@ def main():
                          "tools/generate_parameter_enclosures.py",
                          "tools/generate_crossing_coordinate_enclosures.py",
                          "tools/generate_crossing_point_order.py",
-                         "tools/generate_constructed_orientation.py"):
+                         "tools/generate_constructed_orientation.py",
+                         "tools/generate_span_query_fixtures.py"):
             if (packaged / relative).read_bytes() != (ROOT / relative).read_bytes():
                 raise SystemExit("packaged file differs from checkout: " + relative)
         # Override any inherited target directory so packaged/downstream evidence

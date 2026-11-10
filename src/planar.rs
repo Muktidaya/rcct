@@ -394,7 +394,8 @@ impl SegmentParameter2 {
 /// A nonempty parameter interval on an original finite directed segment.
 ///
 /// Bounds retain exact raw-input parameters. This is a view of one original
-/// support segment, not a new rational segment usable in intersection APIs.
+/// support segment, not a general rational segment; it can be intersected with
+/// raw segments through [`SegmentSpan2::intersect_raw`].
 #[derive(Clone)]
 pub struct SegmentSpan2 {
     start: SegmentParameter2,
@@ -468,6 +469,188 @@ impl SegmentSpan2 {
         };
         budget.remaining -= 1;
         Ok((left, right))
+    }
+
+    /// Intersects this constructed span with a nonzero raw-input segment.
+    ///
+    /// Events are clipped and ordered exactly on the original directed support;
+    /// rational span boundaries are never rounded to `Point2`. A proper crossing
+    /// at a span boundary is reported as a boundary touch. An exhausted budget
+    /// is rejected before work, leaving the span, cutter and budget unchanged.
+    /// A completed query, including a disjoint result, consumes one query unit.
+    pub fn intersect_raw(
+        &self,
+        cutter: Segment2,
+        budget: &mut SpanQueryBudget,
+    ) -> Result<SpanIntersection2, SpanQueryError> {
+        if budget.remaining == 0 {
+            return Err(SpanQueryError::QueryLimitExceeded);
+        }
+        let support = self.segment();
+        let event = match intersect_segments(support, cutter) {
+            SegmentIntersection::Disjoint => SpanIntersection2::disjoint(),
+            SegmentIntersection::Point(kind) => {
+                let parameter = match kind {
+                    SegmentPointEvent::ProperCrossing => proper_crossing_witness(support, cutter)
+                        .expect("a proper crossing has a witness")
+                        .parameter(),
+                    SegmentPointEvent::BoundaryTouch => endpoint_touch_witness(support, cutter)
+                        .expect("a boundary touch has a witness")
+                        .parameter(),
+                };
+                let lower = parameter
+                    .compare_on_first(&self.start)
+                    .expect("same support");
+                let upper = parameter.compare_on_first(&self.end).expect("same support");
+                if lower == Ordering::Less || upper == Ordering::Greater {
+                    SpanIntersection2::disjoint()
+                } else {
+                    let kind = if kind == SegmentPointEvent::ProperCrossing
+                        && lower == Ordering::Greater
+                        && upper == Ordering::Less
+                    {
+                        SpanIntersectionKind2::ProperCrossing
+                    } else {
+                        SpanIntersectionKind2::BoundaryTouch
+                    };
+                    SpanIntersection2::point(kind, parameter)
+                }
+            }
+            SegmentIntersection::Overlap => {
+                let overlap =
+                    overlap_witness(support, cutter).expect("a positive overlap has a witness");
+                let overlap_start = overlap.start_parameter();
+                let overlap_end = overlap.end_parameter();
+                let start = if self
+                    .start
+                    .compare_on_first(&overlap_start)
+                    .expect("same support")
+                    == Ordering::Greater
+                {
+                    self.start
+                } else {
+                    overlap_start
+                };
+                let end = if self
+                    .end
+                    .compare_on_first(&overlap_end)
+                    .expect("same support")
+                    == Ordering::Less
+                {
+                    self.end
+                } else {
+                    overlap_end
+                };
+                match start.compare_on_first(&end).expect("same support") {
+                    Ordering::Less => SpanIntersection2::overlap(start, end),
+                    Ordering::Equal => {
+                        SpanIntersection2::point(SpanIntersectionKind2::BoundaryTouch, start)
+                    }
+                    Ordering::Greater => SpanIntersection2::disjoint(),
+                }
+            }
+        };
+        budget.remaining -= 1;
+        Ok(event)
+    }
+}
+
+/// A caller-chosen cap on completed span/raw-segment intersection queries.
+///
+/// One completed query, including a disjoint result, uses one unit. Each query
+/// uses fixed-width raw-input arithmetic, but this is not a wall-time, total
+/// instruction, allocation or caller-storage budget.
+#[derive(Debug, Eq, PartialEq)]
+pub struct SpanQueryBudget {
+    remaining: u64,
+}
+
+impl SpanQueryBudget {
+    /// Creates a budget for at most `limit` completed queries.
+    pub const fn new(limit: u64) -> Self {
+        Self { remaining: limit }
+    }
+    /// Returns remaining query units.
+    pub const fn remaining(&self) -> u64 {
+        self.remaining
+    }
+}
+
+/// A span/raw-segment query could not begin within its budget.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SpanQueryError {
+    /// No query units remain.
+    QueryLimitExceeded,
+}
+
+impl fmt::Display for SpanQueryError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::QueryLimitExceeded => f.write_str("span query budget is exhausted"),
+        }
+    }
+}
+
+impl std::error::Error for SpanQueryError {}
+
+/// The intersection class of a retained span and a raw-input segment.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SpanIntersectionKind2 {
+    /// The closed sets are disjoint.
+    Disjoint,
+    /// Both segment interiors cross at a point.
+    ProperCrossing,
+    /// The closed sets meet at exactly one boundary point.
+    BoundaryTouch,
+    /// The closed sets share a positive-length interval.
+    Overlap,
+}
+
+/// An exact event in the parameter domain of an original support segment.
+///
+/// A point event has a first parameter and no last parameter; an overlap has
+/// both; a disjoint result has neither. Retain the input span and cutter for
+/// provenance. This value does not construct a new arbitrary rational segment.
+#[derive(Clone)]
+pub struct SpanIntersection2 {
+    kind: SpanIntersectionKind2,
+    first: Option<SegmentParameter2>,
+    last: Option<SegmentParameter2>,
+}
+
+impl SpanIntersection2 {
+    fn disjoint() -> Self {
+        Self {
+            kind: SpanIntersectionKind2::Disjoint,
+            first: None,
+            last: None,
+        }
+    }
+    fn point(kind: SpanIntersectionKind2, parameter: SegmentParameter2) -> Self {
+        Self {
+            kind,
+            first: Some(parameter),
+            last: None,
+        }
+    }
+    fn overlap(first: SegmentParameter2, last: SegmentParameter2) -> Self {
+        Self {
+            kind: SpanIntersectionKind2::Overlap,
+            first: Some(first),
+            last: Some(last),
+        }
+    }
+    /// Returns the event class relative to the span and cutter.
+    pub const fn kind(&self) -> SpanIntersectionKind2 {
+        self.kind
+    }
+    /// Returns the point parameter, or the first overlap boundary, when present.
+    pub const fn first_parameter(&self) -> Option<SegmentParameter2> {
+        self.first
+    }
+    /// Returns the last overlap boundary; point and disjoint events have none.
+    pub const fn last_parameter(&self) -> Option<SegmentParameter2> {
+        self.last
     }
 }
 

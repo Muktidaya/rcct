@@ -71,3 +71,5 @@ jobs:
         run: python tools/generate_crossing_point_order.py --check
       - name: Reproduce constructed orientation fixtures
         run: python tools/generate_constructed_orientation.py --check
+      - name: Reproduce span query fixtures
+        run: python tools/generate_span_query_fixtures.py --check

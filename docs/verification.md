@@ -268,3 +268,18 @@ these are finite tests and reviewed bounds, not a formal proof.
 Rust 1.99.1 formatting, Clippy, debug/release tests, rustdoc, all fixture checks
 and the dirty-candidate package/downstream check passed locally. Hosted CI and
 formal verification were not run.
+
+### Original-support span and raw-cutter queries
+
+Two deterministic Python `Fraction` corpora independently supply 512 point-event
+and 512 overlap-clipping results. Focused tests also cover non-dyadic span
+boundaries, single-point clipped overlaps, reversed support traversal, repeated
+queries and splits, and unchanged inputs and budget on exhaustion. The source
+parameter-comparison capacity argument remains bounded to first-generation raw
+inputs; the query count budget is not a time or memory limit.
+
+On Rust 1.99.1, formatting, Clippy with warnings denied, debug and release
+tests and doctests, warnings-denied rustdoc, all eight fixture checks, and the
+dirty-candidate packaged crate and downstream compatibility checks in both
+profiles passed locally. These finite checks are not a formal proof. Hosted CI
+and visual inspection of rendered documentation were not run.
