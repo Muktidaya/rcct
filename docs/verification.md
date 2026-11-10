@@ -337,6 +337,26 @@ dirty-candidate package/downstream checks in both profiles passed locally. The
 affected face tests and package checks were rerun after adding tangent cases.
 At this local record hosted CI and visual inspection of rendered docs had not run.
 
+### Group winding and face-based Boolean selection
+
+The face-grouping and aggregate-winding review traced exact containment,
+clockwise-walk ownership, coincident source weights, and checked constraint
+propagation. Grouped winding is cross-checked against the existing aggregate
+result. An independent quarter-unit rectangle oracle checks selected boundary
+edges and exact integer areas over 160 deterministic generated pairs, with
+typed rejection of unsupported non-simple input. Tests also exercise operand
+reversal and commutativity, `A - A`, `A xor A`, coincident and shared edges,
+nested holes, even-odd versus nonzero fill, ignored chords, every resource
+class, and unchanged prior results on failure. The non-dyadic triangle fixture
+is generated independently by Python `Fraction` clipping and checks exact
+rational output areas. These are finite tests, not a formal proof or independent
+third-party audit.
+
+On Rust 1.99.1, formatting, Clippy with warnings denied, full debug/release tests
+and doctests, warnings-denied rustdoc, all nine fixture checks, and the
+dirty-candidate packaged-crate/downstream checks passed in both profiles. At this
+local record hosted CI and visual inspection of rendered docs had not run.
+
 ### Located points and spans
 
 An independent signed-`i128` rational determinant and closed-bounds oracle

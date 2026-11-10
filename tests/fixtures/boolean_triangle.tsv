@@ -1,0 +1,15 @@
+# V x_num x_den y_num y_den; A operation twice_area_num twice_area_den
+V	0	1	0	1
+V	0	1	6	1
+V	1	1	-1	1
+V	1	1	0	1
+V	1	1	4	1
+V	11	5	19	5
+V	5	2	0	1
+V	23	5	7	5
+V	6	1	0	1
+V	7	1	3	1
+A	union	471	10
+A	intersection	189	10
+A	difference	171	10
+A	symmetric_difference	141	5

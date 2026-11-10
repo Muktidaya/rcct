@@ -49,7 +49,8 @@ checked throughout the graph; an open or otherwise inconsistent aggregate chain
 returns `InconsistentChain`. Integer arithmetic is checked and may return
 `ArithmeticOverflow`. This computes face winding for the aggregate chain, not
 per-source winding, arbitrary point-on-boundary classification, or a Boolean
-operation. Fill rules and region selection remain caller decisions.
+operation. A separate [Boolean selection stage](planar-boolean.md) provides
+per-group winding, fill rules, and bounded face selection.
 
 ## Limits and failure
 
@@ -74,5 +75,5 @@ partial result and leaves previous objects unchanged. See
 [arrangement graph](planar-arrangement.md) for earlier-stage limits.
 
 Self-touching or bridge boundaries, isolated point inputs, curves, arbitrary
-constructed segments, face editing, and general Boolean operations remain
+constructed segments, face editing, and general CAD Boolean operations remain
 unsupported. Independent tests are finite evidence rather than a formal proof.

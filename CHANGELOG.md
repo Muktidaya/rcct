@@ -2,6 +2,8 @@
 
 ## 0.2.0-alpha.1 (unreleased)
 
+- Compute per-group face winding and bounded face-based 2D Boolean boundary
+  selections with nonzero and even-odd fill rules.
 - Group simple boundary walks into bounded and unbounded faces and compute
   aggregate directed-source winding with explicit limits and failure modes.
 - Build bounded half-edge rotations and boundary walks, and classify the exact

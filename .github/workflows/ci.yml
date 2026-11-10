@@ -73,3 +73,5 @@ jobs:
         run: python tools/generate_constructed_orientation.py --check
       - name: Reproduce span query fixtures
         run: python tools/generate_span_query_fixtures.py --check
+      - name: Reproduce Boolean triangle fixture
+        run: python tools/generate_boolean_triangle_fixture.py --check

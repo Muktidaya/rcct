@@ -17,11 +17,17 @@ use std::cmp::Ordering;
 use std::fmt;
 
 mod arrangement;
+mod boolean;
 mod embedding;
 mod faces;
 pub use arrangement::{
     Arrangement2, ArrangementEdge2, ArrangementEdgeUse2, ArrangementError2, ArrangementLimits2,
     ArrangementResource2, ArrangementVertex2, build_arrangement2,
+};
+pub use boolean::{
+    BooleanOp2, BooleanRegion2, BooleanRegionError2, BooleanRegionLimits2, BooleanRegionResource2,
+    FillRule2, GroupWindingError2, GroupWindingLimits2, GroupWindingResource2, GroupWindings2,
+    group_windings2, select_boolean2,
 };
 pub use embedding::{
     ArrangementEmbedding2, EmbeddingError2, EmbeddingLimits2, EmbeddingResource2, HalfEdge2,

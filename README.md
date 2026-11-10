@@ -51,7 +51,7 @@ Choose the type by what the value represents:
 | `Segment2` | A checked nonzero finite segment | Construction rejects equal endpoints. |
 | `ClosedSegment2` | A finite segment set that may be a point | Point-segment contacts do not return a parameter. |
 | `SimpleWire2` | A validated simple closed polygonal wire | Ordered vertices define an implicit closing edge. |
-| `Arrangement2` | A bounded graph of raw straight segments | Simple-walk faces are built separately; Boolean regions are not provided. |
+| `Arrangement2` | A bounded graph of raw straight segments | Simple-walk faces and face-based Boolean selections are built separately. |
 
 Frames and units are caller-owned, not encoded in these types. The source-level
 rustdoc includes an executable `end - start` example and explains why floating-
@@ -77,6 +77,8 @@ order and direct component division.
   boundary walks, simple-walk orientation and limits.
 - [Planar faces and winding](docs/planar-faces.md): simple-walk face grouping,
   exact hole containment, aggregate winding and unsupported topology.
+- [Planar Boolean regions](docs/planar-boolean.md): per-group winding and
+  face-based 2D selection, boundaries, limits and lower-dimensional exclusions.
 - [Arithmetic backend evaluation](docs/arithmetic-backend-evaluation.md):
   preliminary license, dependency and unsafe-code tradeoffs.
 - [Verification record](docs/verification.md): independent references,
@@ -109,9 +111,9 @@ implementations rather than reproduce their source, API, or internal structure.
   classification, and simple closed-wire validation. The prerelease declares
   Rust 1.99.1 as its minimum. A bounded raw-segment graph retains shared points,
   edge pieces and source traversals. A separate stage groups simple walks into
-  faces and computes aggregate winding for consistent directed chains.
+  faces; per-group winding supports bounded face-based 2D Boolean selection.
 - **Remaining v0.2.0 scope:** broader geometry, B-rep, and Boolean operations.
-  These are not implemented by this slice and require additional milestones.
+  General CAD and 3D Boolean operations require additional milestones.
 - **Later direction:** additional modeling algorithms and exchange formats.
 
 The roadmap is a statement of intended scope, not an OCCT compatibility promise,
@@ -148,6 +150,7 @@ python3 tools/generate_crossing_coordinate_enclosures.py --check
 python3 tools/generate_crossing_point_order.py --check
 python3 tools/generate_constructed_orientation.py --check
 python3 tools/generate_span_query_fixtures.py --check
+python3 tools/generate_boolean_triangle_fixture.py --check
 python3 tools/check_package.py
 ```
 

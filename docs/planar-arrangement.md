@@ -67,6 +67,8 @@ The graph handles overlapping and coincident raw segments by retaining source
 uses. A separate [half-edge embedding](planar-embedding.md) provides radial
 order and boundary walks. A [separate face stage](planar-faces.md) groups simple
 walks and computes aggregate source winding. Isolated point inputs, curves,
-arbitrary rational segment endpoints and Boolean operations remain unsupported. Independent rational
+arbitrary rational segment endpoints and general CAD Boolean operations remain
+unsupported. The [face-based 2D Boolean stage](planar-boolean.md) has narrower
+input and output contracts. Independent rational
 graph tests provide finite evidence rather than a formal proof. See
 [repeated-cut prerequisites](repeated-cut-prerequisites.md) for further gates.

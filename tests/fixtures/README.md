@@ -53,6 +53,10 @@ clipping results from Python `Fraction`, each with 512 cases. Run
 `python3 tools/generate_crossing_order_fixtures.py --check` first to verify
 their source data, then `python3 tools/generate_span_query_fixtures.py --check`.
 
+`boolean_triangle.tsv` contains exact vertices and Boolean areas obtained by
+independent Python `Fraction` convex clipping. Verify it with
+`python3 tools/generate_boolean_triangle_fixture.py --check`.
+
 ## Acceptance budgets
 
 These are empirical release test thresholds, not universal API accuracy claims.
