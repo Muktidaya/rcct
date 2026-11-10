@@ -73,6 +73,8 @@ order and direct component division.
   clipping, cross-support point location, query budgets and scope.
 - [Planar arrangement graph](docs/planar-arrangement.md): shared vertices,
   coincident edges, source traversal, resource limits and failure semantics.
+- [Planar graph bridges](docs/planar-bridges.md): bounded component and
+  graph-edge bridge analysis, including coincident source uses.
 - [Planar half-edge embedding](docs/planar-embedding.md): exact radial order,
   boundary walks, simple-walk orientation and limits.
 - [Planar faces and winding](docs/planar-faces.md): simple-walk face grouping,

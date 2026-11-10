@@ -18,6 +18,7 @@ use std::fmt;
 
 mod arrangement;
 mod boolean;
+mod bridges;
 mod embedding;
 mod faces;
 pub use arrangement::{
@@ -28,6 +29,10 @@ pub use boolean::{
     BooleanOp2, BooleanRegion2, BooleanRegionError2, BooleanRegionLimits2, BooleanRegionResource2,
     FillRule2, GroupWindingError2, GroupWindingLimits2, GroupWindingResource2, GroupWindings2,
     RegionPointBudget2, RegionPointError2, RegionPointLocation2, group_windings2, select_boolean2,
+};
+pub use bridges::{
+    BridgeAnalysis2, BridgeAnalysisError2, BridgeAnalysisLimits2, BridgeAnalysisResource2,
+    analyze_bridges2,
 };
 pub use embedding::{
     ArrangementEmbedding2, EmbeddingError2, EmbeddingLimits2, EmbeddingResource2, HalfEdge2,
