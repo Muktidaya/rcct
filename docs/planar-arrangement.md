@@ -72,3 +72,6 @@ unsupported. The [face-based 2D Boolean stage](planar-boolean.md) has narrower
 input and output contracts. Independent rational
 graph tests provide finite evidence rather than a formal proof. See
 [repeated-cut prerequisites](repeated-cut-prerequisites.md) for further gates.
+
+[Graph bridge analysis](planar-bridges.md) classifies connected components and
+merged graph edges; it does not yet make bridge-containing face walks supported.

@@ -2,6 +2,8 @@
 
 ## 0.2.0-alpha.1 (unreleased)
 
+- Analyze connected components and merged graph-edge bridges with an iterative,
+  resource-bounded search.
 - Compute per-group face winding and bounded face-based 2D Boolean boundary
   selections with nonzero and even-odd fill rules.
 - Group simple boundary walks into bounded and unbounded faces and compute
