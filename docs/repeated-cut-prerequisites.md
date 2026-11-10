@@ -6,12 +6,24 @@ points, compare those points with each other and with binary64 input points,
 and produce tight parameter and crossing-coordinate enclosures. These are
 bounded first-generation constructions. `SegmentSpan2` can repeatedly split a
 parameter span on one original raw input segment at retained parameters, and
-intersect that span with a raw cutter under a query budget. It does not accept
+intersect that span with a raw cutter or a second original-support span under a
+query budget. The latter can compare and identify overlap boundaries but cannot
+reparameterize every boundary on both supports. It does not accept
 an exact crossing point as an arbitrary segment endpoint or intersect arbitrary
 constructed segments, and an enclosure is not an exact point identity. See
 the [span intersection contract](span-intersection.md).
 `orient_constructed2d` handles raw and first-generation crossing points under a
 fixed caller budget; see [its contract](constructed-predicates.md).
+
+For an overlap boundary retained on one support, conversion to another support
+can require a wider parameter than `SegmentParameter2` can hold. On a varying
+coordinate, a boundary represented as `X / D` in binary64 integer units maps to
+`(X - A*D) / ((B - A)*D)` on target endpoints `A, B`. The existing bounds give
+`D < 2^4199` and `|B - A| < 2^2099`, so the denominator can need up to 6298
+bits before reduction, beyond the existing 66-limb parameter capacity. A valid
+conversion must account for that width and subsequent operations rather than
+truncate, round, or assume fraction reduction will fit. This is a sizing bound,
+not an implemented conversion or a guarantee for arbitrary construction chains.
 
 ## Required arithmetic boundary
 
@@ -43,8 +55,8 @@ incidence handling. Construction should operate in a draft and publish only afte
 all required comparisons, splits and structural checks succeed within budget.
 
 No arrangement or general rational intersection API is provided by the current
-crate. Original-support span splitting and raw-cutter queries are narrower than
-general repeated cuts.
+crate. Original-support span splitting and intersection queries are narrower
+than general repeated cuts.
 Required evidence includes independent rational oracles for
 second and later cuts, equivalent unreduced representations, exact equality
 across distinct sources, collinear overlap and coincident events, exponent and

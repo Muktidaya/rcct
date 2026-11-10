@@ -360,6 +360,39 @@ impl SegmentParameter2 {
         Some(left.iter().rev().cmp(right.iter().rev()))
     }
 
+    /// Compares the represented exact points across original supports, x then y.
+    ///
+    /// Both parameters must be produced by this API's bounded raw-input
+    /// constructions. Equal points compare equal even when their directed
+    /// supports or fraction representations differ. No rounded coordinates or
+    /// tolerances are used. This fixed-width operation does not reparameterize
+    /// either point or introduce an arbitrary rational point input.
+    pub fn compare_point_lexicographically(&self, other: &Self) -> Ordering {
+        let coordinate = |parameter: &Self, use_x| {
+            let segment = parameter.first;
+            let (start, end) = if use_x {
+                (segment.start.x, segment.end.x)
+            } else {
+                (segment.start.y, segment.end.y)
+            };
+            crossing_coordinate_numerator(start, end, parameter)
+        };
+        let compare = |use_x| {
+            compare_construction_coordinates(
+                coordinate(self, use_x),
+                self.denominator,
+                coordinate(other, use_x),
+                other.denominator,
+            )
+        };
+        compare(true).then_with(|| compare(false))
+    }
+
+    /// Returns whether these parameters represent the same exact point.
+    pub fn same_point(&self, other: &Self) -> bool {
+        self.compare_point_lexicographically(other) == Ordering::Equal
+    }
+
     /// Returns the tight binary64 enclosure of this exact parameter in `[0, 1]`.
     ///
     /// If exactly representable, both bounds are equal. Otherwise they are
@@ -395,7 +428,8 @@ impl SegmentParameter2 {
 ///
 /// Bounds retain exact raw-input parameters. This is a view of one original
 /// support segment, not a general rational segment; it can be intersected with
-/// raw segments through [`SegmentSpan2::intersect_raw`].
+/// raw segments through [`SegmentSpan2::intersect_raw`] and another such span
+/// through [`SegmentSpan2::intersect_span`].
 #[derive(Clone)]
 pub struct SegmentSpan2 {
     start: SegmentParameter2,
@@ -553,9 +587,271 @@ impl SegmentSpan2 {
         budget.remaining -= 1;
         Ok(event)
     }
+
+    /// Intersects two retained intervals on original finite input segments.
+    ///
+    /// Point events return exact parameters on both supports. For an overlap,
+    /// boundaries are ordered along `self` and retain the parameter of whichever
+    /// input span supplied each boundary. They are not automatically reparameterized
+    /// on the other support. Inputs are immutable and one completed query consumes
+    /// one unit; an exhausted budget returns before work without changing it.
+    pub fn intersect_span(
+        &self,
+        other: &Self,
+        budget: &mut SpanQueryBudget,
+    ) -> Result<SpanPairIntersection2, SpanQueryError> {
+        if budget.remaining == 0 {
+            return Err(SpanQueryError::QueryLimitExceeded);
+        }
+        let first = self.segment();
+        let second = other.segment();
+        let result = match intersect_segments(first, second) {
+            SegmentIntersection::Disjoint => SpanPairIntersection2::disjoint(),
+            SegmentIntersection::Point(kind) => {
+                let (a, b) = match kind {
+                    SegmentPointEvent::ProperCrossing => (
+                        proper_crossing_witness(first, second)
+                            .expect("proper crossing")
+                            .parameter(),
+                        proper_crossing_witness(second, first)
+                            .expect("proper crossing")
+                            .parameter(),
+                    ),
+                    SegmentPointEvent::BoundaryTouch => (
+                        endpoint_touch_witness(first, second)
+                            .expect("boundary touch")
+                            .parameter(),
+                        endpoint_touch_witness(second, first)
+                            .expect("boundary touch")
+                            .parameter(),
+                    ),
+                };
+                let (a_lower, a_upper) = span_parameter_bounds(self, a);
+                let (b_lower, b_upper) = span_parameter_bounds(other, b);
+                if a_lower == Ordering::Less
+                    || a_upper == Ordering::Greater
+                    || b_lower == Ordering::Less
+                    || b_upper == Ordering::Greater
+                {
+                    SpanPairIntersection2::disjoint()
+                } else {
+                    let proper = kind == SegmentPointEvent::ProperCrossing
+                        && a_lower == Ordering::Greater
+                        && a_upper == Ordering::Less
+                        && b_lower == Ordering::Greater
+                        && b_upper == Ordering::Less;
+                    SpanPairIntersection2::point(
+                        if proper {
+                            SpanIntersectionKind2::ProperCrossing
+                        } else {
+                            SpanIntersectionKind2::BoundaryTouch
+                        },
+                        a,
+                        b,
+                    )
+                }
+            }
+            SegmentIntersection::Overlap => intersect_collinear_spans(self, other),
+        };
+        budget.remaining -= 1;
+        Ok(result)
+    }
 }
 
-/// A caller-chosen cap on completed span/raw-segment intersection queries.
+fn span_parameter_bounds(
+    span: &SegmentSpan2,
+    parameter: SegmentParameter2,
+) -> (Ordering, Ordering) {
+    (
+        parameter
+            .compare_on_first(&span.start)
+            .expect("same support"),
+        parameter.compare_on_first(&span.end).expect("same support"),
+    )
+}
+
+/// Which input span supplies an exact overlap boundary parameter.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SpanBoundarySource2 {
+    /// The span on which `intersect_span` was called.
+    First,
+    /// The span passed to `intersect_span`.
+    Second,
+}
+
+/// An exact overlap boundary retained on its original support.
+#[derive(Clone, Copy)]
+pub struct SpanBoundary2 {
+    source: SpanBoundarySource2,
+    parameter: SegmentParameter2,
+}
+
+impl SpanBoundary2 {
+    /// Identifies the input span supplying the boundary.
+    pub const fn source(&self) -> SpanBoundarySource2 {
+        self.source
+    }
+    /// Returns the boundary's exact parameter on that input's original support.
+    pub const fn parameter(&self) -> SegmentParameter2 {
+        self.parameter
+    }
+}
+
+/// Exact intersection event between two original-support spans.
+///
+/// Point events expose a parameter on each support. Overlaps expose two
+/// source-tagged boundaries in first-support traversal order; a boundary need
+/// not have a parameter available on both supports. Disjoint events have neither.
+#[derive(Clone)]
+pub struct SpanPairIntersection2 {
+    kind: SpanIntersectionKind2,
+    first: Option<SpanBoundary2>,
+    last: Option<SpanBoundary2>,
+    point_on_second: Option<SegmentParameter2>,
+}
+
+impl SpanPairIntersection2 {
+    fn disjoint() -> Self {
+        Self {
+            kind: SpanIntersectionKind2::Disjoint,
+            first: None,
+            last: None,
+            point_on_second: None,
+        }
+    }
+    fn point(
+        kind: SpanIntersectionKind2,
+        first: SegmentParameter2,
+        second: SegmentParameter2,
+    ) -> Self {
+        Self {
+            kind,
+            first: Some(SpanBoundary2 {
+                source: SpanBoundarySource2::First,
+                parameter: first,
+            }),
+            last: None,
+            point_on_second: Some(second),
+        }
+    }
+    fn overlap(first: SpanBoundary2, last: SpanBoundary2) -> Self {
+        Self {
+            kind: SpanIntersectionKind2::Overlap,
+            first: Some(first),
+            last: Some(last),
+            point_on_second: None,
+        }
+    }
+    /// Returns the event class relative to both spans.
+    pub const fn kind(&self) -> SpanIntersectionKind2 {
+        self.kind
+    }
+    /// Returns the point or first overlap boundary, when present.
+    pub const fn first_boundary(&self) -> Option<SpanBoundary2> {
+        self.first
+    }
+    /// Returns the last overlap boundary, if this is an overlap.
+    pub const fn last_boundary(&self) -> Option<SpanBoundary2> {
+        self.last
+    }
+    /// Returns the second-support parameter for a point event, if present.
+    pub const fn point_on_second(&self) -> Option<SegmentParameter2> {
+        self.point_on_second
+    }
+}
+
+// Both supports have a positive-length raw overlap, hence are collinear. On
+// either nonconstant coordinate of the first support, coordinate order is a
+// strict order of their points. No constructed coordinate is rounded.
+fn intersect_collinear_spans(first: &SegmentSpan2, second: &SegmentSpan2) -> SpanPairIntersection2 {
+    let support = first.segment();
+    let use_x = support.start.x != support.end.x;
+    let axis = |p: Point2| if use_x { p.x } else { p.y };
+    let forward = axis(support.start) < axis(support.end);
+    let first_low = SpanBoundary2 {
+        source: SpanBoundarySource2::First,
+        parameter: first.start,
+    };
+    let first_high = SpanBoundary2 {
+        source: SpanBoundarySource2::First,
+        parameter: first.end,
+    };
+    let second_forward = (axis(second.segment().start) < axis(second.segment().end)) == forward;
+    let second_low = SpanBoundary2 {
+        source: SpanBoundarySource2::Second,
+        parameter: if second_forward {
+            second.start
+        } else {
+            second.end
+        },
+    };
+    let second_high = SpanBoundary2 {
+        source: SpanBoundarySource2::Second,
+        parameter: if second_forward {
+            second.end
+        } else {
+            second.start
+        },
+    };
+    let cmp = |a: SpanBoundary2, b: SpanBoundary2| {
+        compare_span_boundary_axis(a.parameter, b.parameter, use_x, forward)
+    };
+    let low = if cmp(first_low, second_low) == Ordering::Less {
+        second_low
+    } else {
+        first_low
+    };
+    let high = if cmp(first_high, second_high) == Ordering::Greater {
+        second_high
+    } else {
+        first_high
+    };
+    match cmp(low, high) {
+        Ordering::Greater => SpanPairIntersection2::disjoint(),
+        Ordering::Less => SpanPairIntersection2::overlap(low, high),
+        Ordering::Equal => {
+            // Nonempty intervals touching at a single point contribute one
+            // endpoint each; both source parameters are already retained.
+            debug_assert!(low.source != high.source);
+            let (a, b) = if low.source == SpanBoundarySource2::First {
+                (low.parameter, high.parameter)
+            } else {
+                (high.parameter, low.parameter)
+            };
+            SpanPairIntersection2::point(SpanIntersectionKind2::BoundaryTouch, a, b)
+        }
+    }
+}
+
+fn compare_span_boundary_axis(
+    a: SegmentParameter2,
+    b: SegmentParameter2,
+    use_x: bool,
+    forward: bool,
+) -> Ordering {
+    let coordinate = |p: SegmentParameter2| {
+        let segment = p.first;
+        let (start, end) = if use_x {
+            (segment.start.x, segment.end.x)
+        } else {
+            (segment.start.y, segment.end.y)
+        };
+        crossing_coordinate_numerator(start, end, &p)
+    };
+    let ordering = compare_construction_coordinates(
+        coordinate(a),
+        a.denominator,
+        coordinate(b),
+        b.denominator,
+    );
+    if forward {
+        ordering
+    } else {
+        ordering.reverse()
+    }
+}
+
+/// A caller-chosen cap on completed span intersection queries.
 ///
 /// One completed query, including a disjoint result, uses one unit. Each query
 /// uses fixed-width raw-input arithmetic, but this is not a wall-time, total
@@ -576,7 +872,7 @@ impl SpanQueryBudget {
     }
 }
 
-/// A span/raw-segment query could not begin within its budget.
+/// A span intersection query could not begin within its budget.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SpanQueryError {
     /// No query units remain.

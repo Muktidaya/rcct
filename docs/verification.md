@@ -283,3 +283,18 @@ tests and doctests, warnings-denied rustdoc, all eight fixture checks, and the
 dirty-candidate packaged crate and downstream compatibility checks in both
 profiles passed locally. These finite checks are not a formal proof. Hosted CI
 and visual inspection of rendered documentation were not run.
+
+### Original-support span pairs and point identity
+
+An independent signed-`i128` rational oracle checks 2,400 collinear span pairs
+and 3,840 transverse pairs, including reversed and vertical supports. The
+collinear cases also cross-check raw-cutter results against an equivalent whole
+second span and compare retained point coordinates across supports. Focused
+cases cover unreduced equal points on different supports, exact contact at
+maximum and minimum subnormal coordinate scales, and exhausted query budgets.
+The finite tests and reviewed fixed-width bounds are evidence, not a proof.
+
+Rust 1.99.1 formatting, Clippy with warnings denied, debug/release tests and
+doctests, warnings-denied rustdoc, all eight fixture checks, and dirty-candidate
+packaged crate and downstream compatibility checks passed locally. Hosted CI
+and visual inspection of rendered documentation were not run.

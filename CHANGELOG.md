@@ -2,6 +2,8 @@
 
 ## 0.2.0-alpha.1 (unreleased)
 
+- Intersect pairs of original-support spans and compare retained parameter points
+  across supports exactly, including source-tagged overlap boundaries.
 - Intersect retained original-support spans with raw segments using exact
   parameter clipping and a caller-supplied query budget.
 - Add budgeted exact orientation for raw and first-generation crossing points,

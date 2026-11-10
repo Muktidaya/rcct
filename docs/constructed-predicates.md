@@ -27,8 +27,9 @@ consumes the fixed charge. No topology is mutated by this predicate.
 domain of one original directed input segment. It can split an existing span at
 another supported exact parameter from that same source. It does not convert
 constructed points into arbitrary segment inputs or perform general rational
-segment intersections. A span can also be intersected with a raw cutter under
-`SpanQueryBudget`; see the [span intersection contract](span-intersection.md).
+segment intersections. A span can also be intersected with a raw cutter or
+another original-support span under `SpanQueryBudget`; see the
+[span intersection contract](span-intersection.md).
 `SpanSplitBudget` caps successful splits; it does not limit
 rejected calls or caller-owned storage. Splits return two new spans, and any
 error leaves both the source span and budget unchanged. Callers must retain

@@ -69,7 +69,7 @@ order and direct component division.
 - [Bounded constructed predicates](docs/constructed-predicates.md): supported
   first-generation orientation and original-support span split contracts.
 - [Original-support span intersections](docs/span-intersection.md): exact
-  clipping against raw cutters, query budgets and scope.
+  clipping against raw cutters and original-support spans, query budgets and scope.
 - [Arithmetic backend evaluation](docs/arithmetic-backend-evaluation.md):
   preliminary license, dependency and unsafe-code tradeoffs.
 - [Verification record](docs/verification.md): independent references,
