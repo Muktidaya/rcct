@@ -63,3 +63,5 @@ jobs:
         run: python tools/generate_orientation_fixtures.py --check
       - name: Reproduce exact crossing-order fixtures
         run: python tools/generate_crossing_order_fixtures.py --check
+      - name: Reproduce parameter enclosure fixtures
+        run: python tools/generate_parameter_enclosures.py --check

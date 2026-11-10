@@ -195,3 +195,18 @@ comparisons and 2,000 collinear overlaps with independently scaled axes. It
 checked retained endpoints and order against rational parameters. Persistent
 small-grid tests additionally compare overlap boundaries alongside proper and
 touch events. These are finite tests, not a proof.
+
+### Point containment and parameter enclosures
+
+The exact segment containment query is compared against an independent integer
+oracle for 15,000 small-grid segment/point combinations and explicitly covers
+maximum finite and subnormal coordinates. Tight parameter enclosures are checked
+against 1,028 deterministic Python `Fraction` cases, including 256 general
+crossings, exact endpoints, nonrepresentable values, and ratios below the least
+subnormal or arbitrarily close to one. The independent generator records both
+binary64 endpoints and uses `nextafter` after comparing the rounded value to the
+exact rational. This corpus is finite evidence, not a formal proof.
+
+Rust 1.99.1 formatting, Clippy, debug/release tests, rustdoc, all four fixture
+checks, and the dirty-candidate package/downstream check passed locally for
+these increments. Hosted CI was not run.

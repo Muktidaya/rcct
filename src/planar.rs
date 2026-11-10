@@ -356,6 +356,57 @@ impl SegmentParameter2 {
         let right = multiply_predicate_magnitudes(other.numerator, self.denominator);
         Some(left.iter().rev().cmp(right.iter().rev()))
     }
+
+    /// Returns the tight binary64 enclosure of this exact parameter in `[0, 1]`.
+    ///
+    /// If exactly representable, both bounds are equal. Otherwise they are
+    /// adjacent binary64 values enclosing the rational parameter. Integer
+    /// comparisons decide the bounds without rounded floating-point division.
+    pub fn enclosure(&self) -> ParameterEnclosure2 {
+        let target = shift_predicate_by_1074(self.numerator);
+        let compare = |bits: u64| {
+            let candidate = CoordinateInteger::from_finite_f64(f64::from_bits(bits));
+            let product = multiply_predicate_coordinate(self.denominator, candidate);
+            target.iter().rev().cmp(product.iter().rev())
+        };
+        let (mut low, mut high) = (0_u64, 1.0_f64.to_bits());
+        while low < high {
+            let middle = low + (high - low).div_ceil(2);
+            if compare(middle) != Ordering::Less {
+                low = middle;
+            } else {
+                high = middle - 1;
+            }
+        }
+        let lower = f64::from_bits(low);
+        let upper = if compare(low) == Ordering::Equal {
+            lower
+        } else {
+            f64::from_bits(low + 1)
+        };
+        ParameterEnclosure2 { lower, upper }
+    }
+}
+
+/// A tight, inclusive binary64 enclosure of a supported exact segment parameter.
+///
+/// The bounds lie in `[0, 1]` and are identical or adjacent representable
+/// values. The constructor is private so callers cannot manufacture a claim.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ParameterEnclosure2 {
+    lower: f64,
+    upper: f64,
+}
+
+impl ParameterEnclosure2 {
+    /// Returns the inclusive lower bound.
+    pub const fn lower(self) -> f64 {
+        self.lower
+    }
+    /// Returns the inclusive upper bound.
+    pub const fn upper(self) -> f64 {
+        self.upper
+    }
 }
 
 /// An exact proper-crossing witness for two finite, nonzero input segments.
@@ -631,6 +682,48 @@ fn multiply_predicate_magnitudes(left: PredicateInteger, right: PredicateInteger
             carry = sum >> 64;
         }
         let mut index = i + PREDICATE_LIMBS;
+        while carry != 0 {
+            debug_assert!(index < product.len());
+            let sum = u128::from(product[index]) + carry;
+            product[index] = sum as u64;
+            carry = sum >> 64;
+            index += 1;
+        }
+    }
+    product
+}
+
+// Finite binary64 values are integers times 2^-1074. Comparisons for an
+// enclosure require n * 2^1074 versus d * candidate_integer. Both fit in 99
+// limbs: 66 predicate limbs plus 33 coordinate limbs.
+fn shift_predicate_by_1074(value: PredicateInteger) -> [u64; 99] {
+    let mut result = [0_u64; 99];
+    for (i, &limb) in value.limbs.iter().enumerate() {
+        result[i + 16] |= limb << 50;
+        result[i + 17] |= limb >> 14;
+    }
+    result
+}
+
+fn multiply_predicate_coordinate(left: PredicateInteger, right: CoordinateInteger) -> [u64; 99] {
+    let mut product = [0_u64; 99];
+    for i in 0..PREDICATE_LIMBS {
+        if left.limbs[i] == 0 {
+            continue;
+        }
+        let mut carry = 0_u128;
+        for j in 0..COORDINATE_LIMBS {
+            if right.limbs[j] == 0 && carry == 0 {
+                continue;
+            }
+            let index = i + j;
+            let sum = u128::from(left.limbs[i]) * u128::from(right.limbs[j])
+                + u128::from(product[index])
+                + carry;
+            product[index] = sum as u64;
+            carry = sum >> 64;
+        }
+        let mut index = i + COORDINATE_LIMBS;
         while carry != 0 {
             debug_assert!(index < product.len());
             let sum = u128::from(product[index]) + carry;

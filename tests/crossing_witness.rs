@@ -127,6 +127,9 @@ fn endpoint_parameters_order_against_proper_crossings_at_extreme_scale() {
     let middle = proper_crossing_witness(first, segment((0.0, -1.0), (0.0, 1.0))).unwrap();
     let touch = endpoint_touch_witness(first, segment((tiny, 0.0), (tiny, 1.0))).unwrap();
     assert_eq!(touch.point(), point(tiny, 0.0));
+    let tight = touch.parameter().enclosure();
+    assert_eq!(tight.lower(), 0.5);
+    assert_eq!(tight.upper().to_bits(), 0.5_f64.to_bits() + 1);
     assert_eq!(
         touch.parameter().compare_on_first(&middle.parameter()),
         Some(Ordering::Greater)
@@ -193,4 +196,91 @@ fn overlap_boundaries_are_exact_and_follow_first_segment_direction() {
         None
     );
     assert!(overlap_witness(first, segment((max, 0.0), (max, 1.0))).is_none());
+}
+
+#[test]
+fn parameter_enclosures_are_tight_for_exact_and_extreme_values() {
+    let third = witness(1.0, 2.0).parameter().enclosure();
+    assert_eq!(third.lower().to_bits(), 0x3fd5_5555_5555_5555);
+    assert_eq!(third.upper().to_bits(), 0x3fd5_5555_5555_5556);
+    let half = witness(1.0, 1.0).parameter().enclosure();
+    assert_eq!((half.lower(), half.upper()), (0.5, 0.5));
+    let tiny = f64::from_bits(1);
+    let near_zero = witness(tiny, f64::MAX).parameter().enclosure();
+    assert_eq!(near_zero.lower().to_bits(), 0);
+    assert_eq!(near_zero.upper().to_bits(), 1);
+    let near_one = witness(f64::MAX, tiny).parameter().enclosure();
+    assert_eq!(near_one.lower().to_bits(), 1.0_f64.to_bits() - 1);
+    assert_eq!(near_one.upper(), 1.0);
+    let base = segment((0.0, 0.0), (1.0, 0.0));
+    let zero = endpoint_touch_witness(base, segment((0.0, 0.0), (0.0, 1.0)))
+        .unwrap()
+        .parameter()
+        .enclosure();
+    let one = endpoint_touch_witness(base, segment((1.0, 0.0), (1.0, 1.0)))
+        .unwrap()
+        .parameter()
+        .enclosure();
+    assert_eq!((zero.lower(), zero.upper()), (0.0, 0.0));
+    assert_eq!((one.lower(), one.upper()), (1.0, 1.0));
+}
+
+#[test]
+fn parameter_enclosures_match_independent_fraction_oracle() {
+    let mut count = 0;
+    for line in include_str!("fixtures/parameter_enclosures.tsv")
+        .lines()
+        .filter(|line| !line.starts_with('#'))
+    {
+        let fields: Vec<_> = line.split('\t').collect();
+        assert_eq!(fields.len(), 4);
+        let values: Vec<u64> = fields
+            .iter()
+            .map(|s| u64::from_str_radix(s, 16).unwrap())
+            .collect();
+        let result = witness(f64::from_bits(values[0]), f64::from_bits(values[1]))
+            .parameter()
+            .enclosure();
+        assert_eq!(
+            (result.lower().to_bits(), result.upper().to_bits()),
+            (values[2], values[3]),
+            "case {count}"
+        );
+        assert!(values[3] - values[2] <= 1);
+        count += 1;
+    }
+    assert_eq!(count, 772);
+}
+
+#[test]
+fn general_crossing_enclosures_match_independent_fraction_oracle() {
+    let mut count = 0;
+    for line in include_str!("fixtures/parameter_enclosures_general.tsv")
+        .lines()
+        .filter(|line| !line.starts_with('#'))
+    {
+        let fields: Vec<_> = line.split('\t').collect();
+        assert_eq!(fields.len(), 10);
+        let v: Vec<f64> = fields[..8]
+            .iter()
+            .map(|s| s.parse::<i32>().unwrap() as f64)
+            .collect();
+        let first = segment((v[0], v[1]), (v[2], v[3]));
+        let second = segment((v[4], v[5]), (v[6], v[7]));
+        let enclosure = proper_crossing_witness(first, second)
+            .unwrap()
+            .parameter()
+            .enclosure();
+        let expected = (
+            u64::from_str_radix(fields[8], 16).unwrap(),
+            u64::from_str_radix(fields[9], 16).unwrap(),
+        );
+        assert_eq!(
+            (enclosure.lower().to_bits(), enclosure.upper().to_bits()),
+            expected,
+            "case {count}"
+        );
+        count += 1;
+    }
+    assert_eq!(count, 256);
 }

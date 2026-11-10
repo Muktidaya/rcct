@@ -74,7 +74,8 @@ endpoint and a parameter, including collinear single-point contact. Both can
 order events on the same directed first segment. See [their contract](crossing-witness.md).
 `overlap_witness` also retains both original overlap boundaries and their exact
 parameters in first-segment order. Constructed rational inputs remain outside
-these APIs.
+these APIs. Each retained parameter can provide a tight binary64 enclosure;
+this does not enclose a constructed 2D point.
 
 ## Simple closed wires
 

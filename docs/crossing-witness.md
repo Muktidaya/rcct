@@ -28,6 +28,13 @@ bounded by input endpoints. Reversing the first segment reverses the returned
 boundary order. Equal signed-zero coordinates are geometrically identical; the
 returned zero sign is not an identity guarantee.
 
+`SegmentParameter2::enclosure` returns the tight inclusive binary64 bounds for
+the exact parameter in `[0, 1]`: either the same value twice if representable,
+or the adjacent representable values immediately below and above it. It uses
+integer comparisons and a bit-pattern search; no floating-point division or
+process-global rounding-mode change is involved. These are parameter bounds,
+not a coordinate enclosure for the constructed crossing.
+
 ## Representation decision and capacity
 
 Rounding a crossing to binary64 loses identity, as a crossing can be at 1/3.
@@ -51,8 +58,16 @@ differences below `2^2099`, so its products with either kind of parameter also
 fit the 132-limb comparison capacity. These bounds depend on the raw finite
 input contract and the stated integer representation.
 
-Zero-length segments, constructed crossing coordinates,
-floating enclosures, ordering across different source segments, rational inputs,
+To enclose `n/d`, a candidate binary64 value in `[0,1]` is represented as
+`X * 2^-1074`. The integer comparison is `n * 2^1074` versus `d * X`.
+Both values are below `2^5273` for raw-input determinant parameters, and the
+implementation allocates 99 limbs (6336 bits). The generic limb multiplication
+also fits: 66 predicate limbs times 33 coordinate limbs need at most 99 limbs.
+The ordered positive binary64 bit patterns between zero and one permit a
+bounded binary search, including subnormal and exact endpoint cases.
+
+Zero-length segments, constructed crossing coordinates and their enclosures,
+ordering across different source segments, rational inputs,
 and repeated constructed cuts are not provided by these APIs. `None` from
 `proper_crossing_witness` means the intersection is not a proper crossing;
 `None` from `endpoint_touch_witness` means it is not a single-point touch.
@@ -65,4 +80,7 @@ different source segments, endpoint contacts, extreme exponents, and 768 cases
 whose expected order is independently generated with Python `Fraction`.
 `tests/planar_segment_oracle.rs` compares endpoint, overlap-boundary and
 crossing parameters on the small integer grid against a separate integer
-parametric oracle. The tests are finite evidence rather than a proof or qualification.
+parametric oracle. Parameter bounds are checked against 1,028 independently
+generated Python `Fraction` cases, including general crossings, exact values,
+subnormal boundaries and extreme ratios. The tests are finite evidence rather
+than a proof or qualification.
