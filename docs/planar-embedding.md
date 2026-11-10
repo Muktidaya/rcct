@@ -63,7 +63,8 @@ partial embedding or orientation and leaves the original graph and embedding
 unchanged. The embedding borrows its graph, so its indices cannot accidentally
 be used through this object with a different graph.
 
-The implementation does not group walks into faces, detect hole containment,
-assign winding to regions, or support arbitrary constructed-segment inputs.
+The separate [face grouping stage](planar-faces.md) handles containment and
+aggregate winding when every walk is simple. General self-touching boundaries
+and arbitrary constructed-segment inputs remain unsupported.
 Independent tests are finite evidence rather than a formal proof. See the
 [arrangement graph contract](planar-arrangement.md) for its own limits.

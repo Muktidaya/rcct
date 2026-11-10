@@ -65,8 +65,8 @@ provided. Callers must choose limits appropriate to their resources.
 
 The graph handles overlapping and coincident raw segments by retaining source
 uses. A separate [half-edge embedding](planar-embedding.md) provides radial
-order and boundary walks. They do not assign faces, winding to regions, or region
-ownership; accept isolated point inputs, curves or arbitrary rational segment
-endpoints; or implement Boolean operations. Independent rational
+order and boundary walks. A [separate face stage](planar-faces.md) groups simple
+walks and computes aggregate source winding. Isolated point inputs, curves,
+arbitrary rational segment endpoints and Boolean operations remain unsupported. Independent rational
 graph tests provide finite evidence rather than a formal proof. See
 [repeated-cut prerequisites](repeated-cut-prerequisites.md) for further gates.

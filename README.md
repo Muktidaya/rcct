@@ -51,7 +51,7 @@ Choose the type by what the value represents:
 | `Segment2` | A checked nonzero finite segment | Construction rejects equal endpoints. |
 | `ClosedSegment2` | A finite segment set that may be a point | Point-segment contacts do not return a parameter. |
 | `SimpleWire2` | A validated simple closed polygonal wire | Ordered vertices define an implicit closing edge. |
-| `Arrangement2` | A bounded graph of raw straight segments | Faces and Boolean regions are not provided. |
+| `Arrangement2` | A bounded graph of raw straight segments | Simple-walk faces are built separately; Boolean regions are not provided. |
 
 Frames and units are caller-owned, not encoded in these types. The source-level
 rustdoc includes an executable `end - start` example and explains why floating-
@@ -75,6 +75,8 @@ order and direct component division.
   coincident edges, source traversal, resource limits and failure semantics.
 - [Planar half-edge embedding](docs/planar-embedding.md): exact radial order,
   boundary walks, simple-walk orientation and limits.
+- [Planar faces and winding](docs/planar-faces.md): simple-walk face grouping,
+  exact hole containment, aggregate winding and unsupported topology.
 - [Arithmetic backend evaluation](docs/arithmetic-backend-evaluation.md):
   preliminary license, dependency and unsafe-code tradeoffs.
 - [Verification record](docs/verification.md): independent references,
@@ -106,7 +108,8 @@ implementations rather than reproduce their source, API, or internal structure.
   points and segments, exact orientation, exact segment-intersection event
   classification, and simple closed-wire validation. The prerelease declares
   Rust 1.99.1 as its minimum. A bounded raw-segment graph retains shared points,
-  edge pieces and source traversals; it does not build faces.
+  edge pieces and source traversals. A separate stage groups simple walks into
+  faces and computes aggregate winding for consistent directed chains.
 - **Remaining v0.2.0 scope:** broader geometry, B-rep, and Boolean operations.
   These are not implemented by this slice and require additional milestones.
 - **Later direction:** additional modeling algorithms and exchange formats.

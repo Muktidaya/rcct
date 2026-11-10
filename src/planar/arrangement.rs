@@ -124,8 +124,8 @@ impl ArrangementEdgeUse2 {
 /// Indices and ordering are deterministic for the same ordered inputs, but are
 /// not stable under input permutation. Coincident edge pieces are merged and
 /// retain one use per source traversal. A separate half-edge embedding can be
-/// built from this graph. Faces, isolated point inputs, arbitrary constructed
-/// segments, and booleans are not provided.
+/// built from this graph, with face grouping for simple boundary walks. Isolated
+/// point inputs, arbitrary constructed segments, and booleans are not provided.
 pub struct Arrangement2 {
     sources: Vec<Segment2>,
     vertices: Vec<ArrangementVertex2>,

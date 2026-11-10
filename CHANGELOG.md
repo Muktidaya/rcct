@@ -2,6 +2,8 @@
 
 ## 0.2.0-alpha.1 (unreleased)
 
+- Group simple boundary walks into bounded and unbounded faces and compute
+  aggregate directed-source winding with explicit limits and failure modes.
 - Build bounded half-edge rotations and boundary walks, and classify the exact
   orientation of simple walks without assigning faces or accumulating area.
 - Build resource-bounded raw straight-segment arrangement graphs with exact

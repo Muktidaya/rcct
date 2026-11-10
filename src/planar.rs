@@ -18,6 +18,7 @@ use std::fmt;
 
 mod arrangement;
 mod embedding;
+mod faces;
 pub use arrangement::{
     Arrangement2, ArrangementEdge2, ArrangementEdgeUse2, ArrangementError2, ArrangementLimits2,
     ArrangementResource2, ArrangementVertex2, build_arrangement2,
@@ -26,6 +27,11 @@ pub use embedding::{
     ArrangementEmbedding2, EmbeddingError2, EmbeddingLimits2, EmbeddingResource2, HalfEdge2,
     WalkOrientationError2, WalkOrientationLimits2, WalkOrientationResource2, embed_arrangement2,
     simple_walk_orientation2,
+};
+pub use faces::{
+    Face2, FaceBuildError2, FaceBuildLimits2, FaceBuildResource2, FaceWindingError2,
+    FaceWindingLimits2, FaceWindingResource2, FaceWindings2, PlanarFaces2, build_faces2,
+    face_windings2,
 };
 
 const COORDINATE_LIMBS: usize = 33;

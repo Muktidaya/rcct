@@ -319,6 +319,24 @@ doctests, warnings-denied rustdoc, all eight fixture checks, and dirty-candidate
 packaged-crate/downstream checks in both profiles passed locally. At this local
 record, hosted CI and visual inspection of rendered documentation had not run.
 
+### Simple-boundary faces and aggregate winding
+
+The embedding review traced twin/next links, exact raw-support radial order,
+simple-walk orientation and the distinction between walks and faces. An
+independent rectangle containment and signed-winding oracle checks nested,
+disjoint, reversed, translated and scaled arrangements, including 64 generated
+cases. Focused tests cover concave containment, a face with a non-dyadic
+crossing, intersecting and shared-edge rings, coincident cancellation and
+accumulation, tangent and bridge rejection, minimum subnormal and maximum finite
+coordinates, limits and unchanged prior results. These tests are finite evidence,
+not a formal proof or independent third-party audit.
+
+On Rust 1.99.1, formatting, Clippy with warnings denied, full debug/release tests
+and doctests, warnings-denied rustdoc, all eight fixture checks, and the
+dirty-candidate package/downstream checks in both profiles passed locally. The
+affected face tests and package checks were rerun after adding tangent cases.
+At this local record hosted CI and visual inspection of rendered docs had not run.
+
 ### Located points and spans
 
 An independent signed-`i128` rational determinant and closed-bounds oracle

@@ -138,6 +138,14 @@ impl<'a> ArrangementEmbedding2<'a> {
         let end = *self.walk_offsets.get(next)?;
         Some(&self.walk_edges[start..end])
     }
+    pub(super) fn directed_support(&self, h: usize) -> Option<(Segment2, bool)> {
+        let half = self.half_edges.get(h)?;
+        let (source, forward) = self.representatives.get(half.edge).copied().flatten()?;
+        Some((
+            *self.arrangement.sources().get(source)?,
+            forward == h.is_multiple_of(2),
+        ))
+    }
 }
 
 fn reserved<T>(capacity: usize) -> Result<Vec<T>, EmbeddingError2> {

@@ -58,8 +58,9 @@ all required comparisons, splits and structural checks succeed within budget.
 
 The current [bounded arrangement graph](planar-arrangement.md) merges exact
 points and coincident raw-segment pieces while retaining source uses. A separate
-[embedding](planar-embedding.md) provides half-edges and simple-walk orientation
-but does not group walks into faces. Located spans split and intersect subsets
+[embedding](planar-embedding.md) provides half-edges and simple-walk orientation.
+The bounded [face stage](planar-faces.md) groups simple walks and computes
+aggregate winding, but rejects repeated-vertex boundaries. Located spans split and intersect subsets
 of original raw supports; they do not create arbitrary rational lines or second-generation
 crossing points. No general rational intersection API is provided.
 Required evidence includes independent rational oracles for
