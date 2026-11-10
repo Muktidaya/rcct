@@ -196,6 +196,15 @@ impl Segment2 {
     pub const fn end(self) -> Point2 {
         self.end
     }
+
+    /// Returns whether the exact finite point lies on this closed segment.
+    ///
+    /// Orientation is decided exactly for the represented binary64 inputs;
+    /// endpoints are included, with no tolerance or rounding of coordinates.
+    pub fn contains(self, point: Point2) -> bool {
+        orient2d(self.start, self.end, point) == Orientation2::Collinear
+            && on_segment(self.start, self.end, point)
+    }
 }
 
 /// A failure while constructing a checked [`Segment2`].
@@ -548,10 +557,7 @@ pub fn overlap_witness(first: Segment2, second: Segment2) -> Option<SegmentOverl
 }
 
 fn point_on_both(first: Segment2, second: Segment2, p: Point2) -> bool {
-    orient2d(first.start, first.end, p) == Orientation2::Collinear
-        && on_segment(first.start, first.end, p)
-        && orient2d(second.start, second.end, p) == Orientation2::Collinear
-        && on_segment(second.start, second.end, p)
+    first.contains(p) && second.contains(p)
 }
 
 // The caller establishes that point lies on the nonzero first segment.

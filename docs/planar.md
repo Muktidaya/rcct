@@ -13,6 +13,10 @@ does not rescale coordinates, merge nearby points, or apply a tolerance.
 `Point2` fields are private, checked construction is the only way to obtain a
 point or segment.
 
+`Segment2::contains` decides whether a finite point lies on the closed segment
+with exact orientation and coordinate ordering. Endpoints are included; no
+tolerance is applied. It does not construct or round a projected point.
+
 Equality is exact `f64` equality. Thus `+0.0` and `-0.0` compare equal, while
 nearby representable values remain distinct. This is identity of stored
 coordinates, not an assertion about physical measurement accuracy.

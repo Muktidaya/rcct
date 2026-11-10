@@ -93,6 +93,37 @@ fn on_segment(a: P, b: P, p: P) -> bool {
         && (a.1.min(b.1)..=a.1.max(b.1)).contains(&p.1)
 }
 
+#[test]
+fn point_containment_matches_independent_integer_oracle() {
+    let points: Vec<P> = (-2..=2)
+        .flat_map(|x| (-2..=2).map(move |y| (x, y)))
+        .collect();
+    for &a in &points {
+        for &b in &points {
+            if a == b {
+                continue;
+            }
+            let s = segment(a, b);
+            for &p in &points {
+                assert_eq!(
+                    s.contains(Point2::try_new(p.0 as f64, p.1 as f64).unwrap()),
+                    on_segment(a, b, p),
+                    "{a:?} {b:?} {p:?}"
+                );
+            }
+        }
+    }
+    let max = f64::MAX;
+    let tiny = f64::from_bits(1);
+    let s = Segment2::try_new(
+        Point2::try_new(-max, 0.0).unwrap(),
+        Point2::try_new(max, -0.0).unwrap(),
+    )
+    .unwrap();
+    assert!(s.contains(Point2::try_new(tiny, 0.0).unwrap()));
+    assert!(!s.contains(Point2::try_new(tiny, tiny).unwrap()));
+}
+
 fn input_parameter(a: P, b: P, p: P) -> (i64, i64) {
     let (mut numerator, mut denominator) = if a.0 != b.0 {
         (p.0 - a.0, b.0 - a.0)

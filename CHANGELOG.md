@@ -2,6 +2,7 @@
 
 ## 0.2.0-alpha.1 (unreleased)
 
+- Add exact closed-segment point containment for finite binary64 inputs.
 - Retain the two original boundaries of a positive-length collinear overlap
   and their exact parameters in first-segment traversal order.
 - Retain exact endpoint-touch witnesses and compare their parameters with
