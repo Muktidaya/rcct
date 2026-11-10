@@ -2,6 +2,9 @@
 
 ## 0.2.0-alpha.1 (unreleased)
 
+- Add bounded graph incidence, vertex-simple combinatorial closed wires and
+  directed edge-use counts; shell and solid validity remain future work.
+
 - Group faces with bridge excursions when each filtered boundary is empty or
   one simple cycle, retaining original half-edge ownership.
 - Add checked finite 3D points, segments, closed bounds, and fallible rounded

@@ -63,6 +63,8 @@ order and direct component division.
   exceptional inputs, and normalization limits.
 - [Checked spatial primitives](docs/spatial.md): finite 3D values, closed boxes,
   and explicitly rounded line and plane evaluations.
+- [Combinatorial topology](docs/topology.md): bounded graph incidence,
+  directed vertex-simple wires and edge-use counts without geometric validity claims.
 - [Planar geometry slice](docs/planar.md): exact orientation, segment events,
   and simple closed-wire validation contracts.
 - [Segment event witnesses](docs/crossing-witness.md): exact proper-crossing,
