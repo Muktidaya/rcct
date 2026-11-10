@@ -22,6 +22,7 @@ const PREDICATE_LIMBS: usize = 66;
 type CoordinateInteger = SignedMagnitude<COORDINATE_LIMBS>;
 type PredicateInteger = SignedMagnitude<PREDICATE_LIMBS>;
 type ConstructionInteger = SignedMagnitude<99>;
+type ComparisonInteger = SignedMagnitude<165>;
 
 /// A finite point in a caller-owned two-dimensional Cartesian frame.
 ///
@@ -453,6 +454,61 @@ impl CrossingEnclosure2 {
     }
 }
 
+/// An exact point constructed from one proper crossing of raw finite inputs.
+///
+/// Comparisons work across independently constructed crossings without rounding
+/// or fraction reduction. This type cannot be used as a new segment endpoint;
+/// general rational inputs and repeated cuts are not yet supported.
+#[derive(Clone)]
+pub struct ExactCrossingPoint2 {
+    x: ConstructionInteger,
+    y: ConstructionInteger,
+    denominator: PredicateInteger,
+}
+
+impl ExactCrossingPoint2 {
+    /// Compares exact x coordinates across supported crossing constructions.
+    pub fn compare_x(&self, other: &Self) -> Ordering {
+        compare_construction_coordinates(self.x, self.denominator, other.x, other.denominator)
+    }
+    /// Compares exact y coordinates across supported crossing constructions.
+    pub fn compare_y(&self, other: &Self) -> Ordering {
+        compare_construction_coordinates(self.y, self.denominator, other.y, other.denominator)
+    }
+    /// Returns whether both exact coordinates are equal.
+    pub fn same_point(&self, other: &Self) -> bool {
+        self.compare_x(other) == Ordering::Equal && self.compare_y(other) == Ordering::Equal
+    }
+    /// Compares x first, then y, without rounding or fraction reduction.
+    pub fn compare_lexicographically(&self, other: &Self) -> Ordering {
+        self.compare_x(other).then_with(|| self.compare_y(other))
+    }
+    /// Compares this exact point to a finite input point, x first and then y.
+    pub fn compare_to_input(&self, other: Point2) -> Ordering {
+        let x = self.x.signed_cmp(signed_coordinate_product(
+            self.denominator,
+            CoordinateInteger::from_finite_f64(other.x),
+        ));
+        x.then_with(|| {
+            self.y.signed_cmp(signed_coordinate_product(
+                self.denominator,
+                CoordinateInteger::from_finite_f64(other.y),
+            ))
+        })
+    }
+    /// Returns whether both exact coordinates equal a finite input point.
+    pub fn same_as_input(&self, other: Point2) -> bool {
+        self.compare_to_input(other) == Ordering::Equal
+    }
+    /// Returns tight binary64 coordinate enclosures for this exact point.
+    pub fn enclosure(&self) -> CrossingEnclosure2 {
+        CrossingEnclosure2 {
+            x: enclose_crossing_coordinate(self.x, self.denominator),
+            y: enclose_crossing_coordinate(self.y, self.denominator),
+        }
+    }
+}
+
 /// A retained finite input point on a nonzero directed input segment.
 #[derive(Clone, Copy)]
 pub struct PointOnSegment2 {
@@ -523,10 +579,19 @@ impl ProperCrossing2 {
     /// construction, without first rounding the parameter or the point. This
     /// operation applies only to this raw finite-binary64 crossing witness.
     pub fn point_enclosure(&self) -> CrossingEnclosure2 {
+        self.exact_point().enclosure()
+    }
+
+    /// Retains exact rational coordinates for this raw-input crossing.
+    ///
+    /// The result can be compared with other supported crossing constructions,
+    /// but cannot yet be used as a segment endpoint for repeated cuts.
+    pub fn exact_point(&self) -> ExactCrossingPoint2 {
         let segment = self.parameter.first;
-        CrossingEnclosure2 {
-            x: enclose_crossing_coordinate(segment.start.x, segment.end.x, &self.parameter),
-            y: enclose_crossing_coordinate(segment.start.y, segment.end.y, &self.parameter),
+        ExactCrossingPoint2 {
+            x: crossing_coordinate_numerator(segment.start.x, segment.end.x, &self.parameter),
+            y: crossing_coordinate_numerator(segment.start.y, segment.end.y, &self.parameter),
+            denominator: self.parameter.denominator,
         }
     }
 
@@ -922,17 +987,23 @@ fn signed_coordinate_product(
 }
 
 // Coordinates are exact integers in units of 2^-1074. The weighted numerator
-// is A*(d-n) + B*n, compared with d*C for each candidate binary64 coordinate C.
-fn enclose_crossing_coordinate(
+// is A*(d-n) + B*n.
+fn crossing_coordinate_numerator(
     start: f64,
     end: f64,
     parameter: &SegmentParameter2,
-) -> CoordinateEnclosure2 {
+) -> ConstructionInteger {
     let complement = parameter.denominator.subtract(parameter.numerator);
-    let numerator =
-        signed_coordinate_product(complement, CoordinateInteger::from_finite_f64(start)).add(
-            signed_coordinate_product(parameter.numerator, CoordinateInteger::from_finite_f64(end)),
-        );
+    signed_coordinate_product(complement, CoordinateInteger::from_finite_f64(start)).add(
+        signed_coordinate_product(parameter.numerator, CoordinateInteger::from_finite_f64(end)),
+    )
+}
+
+// Compare the weighted numerator against d*C for each candidate coordinate C.
+fn enclose_crossing_coordinate(
+    numerator: ConstructionInteger,
+    denominator: PredicateInteger,
+) -> CoordinateEnclosure2 {
     let compare = |key: u64| {
         let bits = if key & (1_u64 << 63) == 0 {
             !key
@@ -940,7 +1011,7 @@ fn enclose_crossing_coordinate(
             key ^ (1_u64 << 63)
         };
         let candidate = CoordinateInteger::from_finite_f64(f64::from_bits(bits));
-        numerator.signed_cmp(signed_coordinate_product(parameter.denominator, candidate))
+        numerator.signed_cmp(signed_coordinate_product(denominator, candidate))
     };
     let (mut low, mut high) = (0x0010_0000_0000_0000_u64, 0xffef_ffff_ffff_ffff_u64);
     while low < high {
@@ -965,6 +1036,55 @@ fn enclose_crossing_coordinate(
         value(low + 1)
     };
     CoordinateEnclosure2 { lower, upper }
+}
+
+// Raw crossing coordinate numerators are < 2^6298 and denominators < 2^4199.
+// Cross-products are < 2^10497, fitting 165 limbs (10560 bits).
+fn multiply_construction_predicate(
+    left: ConstructionInteger,
+    right: PredicateInteger,
+) -> ComparisonInteger {
+    let mut product = [0_u64; 165];
+    for i in 0..99 {
+        if left.limbs[i] == 0 {
+            continue;
+        }
+        let mut carry = 0_u128;
+        for j in 0..PREDICATE_LIMBS {
+            if right.limbs[j] == 0 && carry == 0 {
+                continue;
+            }
+            let index = i + j;
+            let sum = u128::from(left.limbs[i]) * u128::from(right.limbs[j])
+                + u128::from(product[index])
+                + carry;
+            product[index] = sum as u64;
+            carry = sum >> 64;
+        }
+        let mut index = i + PREDICATE_LIMBS;
+        while carry != 0 {
+            debug_assert!(index < product.len());
+            let sum = u128::from(product[index]) + carry;
+            product[index] = sum as u64;
+            carry = sum >> 64;
+            index += 1;
+        }
+    }
+    ComparisonInteger {
+        limbs: product,
+        negative: left.negative,
+    }
+    .canonical()
+}
+
+fn compare_construction_coordinates(
+    left: ConstructionInteger,
+    left_denominator: PredicateInteger,
+    right: ConstructionInteger,
+    right_denominator: PredicateInteger,
+) -> Ordering {
+    multiply_construction_predicate(left, right_denominator)
+        .signed_cmp(multiply_construction_predicate(right, left_denominator))
 }
 
 /// A simple closed polygonal wire in the plane.

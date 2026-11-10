@@ -234,3 +234,19 @@ positive half-subnormal values, and exact zero. These are finite tests, not a
 formal proof. Local Rust 1.99.1 formatting, Clippy, debug/release tests, rustdoc,
 all fixture checks and dirty-candidate package/downstream checks passed. Hosted
 CI was not run.
+
+### Exact crossing-point identity
+
+Exact raw-input crossing points are compared against each other and against
+finite input points in 256 deterministic Python `Fraction` cases. A separate
+512-case coordinate corpus checks equality under source swap and first-segment
+reversal. Explicit tests distinguish an exact one-third from its neighboring
+binary64 input even though their enclosures overlap, and cover equal unreduced
+constructions and extreme coordinates. The 165-limb bound and retained-input
+limitations are recorded in `docs/crossing-witness.md`; repeated-cut and backend
+requirements are in `docs/repeated-cut-prerequisites.md`.
+
+On Rust 1.99.1, local formatting, Clippy, debug/release tests, rustdoc, fixture
+checks and the dirty-candidate package/downstream check passed. The crossing
+witness tests and packaged checks were rerun after extending the oracle to input
+point comparisons. Hosted CI and formal verification were not run.

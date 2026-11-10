@@ -64,6 +64,8 @@ order and direct component division.
   and simple closed-wire validation contracts.
 - [Segment event witnesses](docs/crossing-witness.md): exact proper-crossing,
   endpoint-touch and overlap parameters, ordering, capacity assumptions, and limitations.
+- [Repeated-cut prerequisites](docs/repeated-cut-prerequisites.md): exact
+  constructed-input, resource and arrangement gates.
 - [Verification record](docs/verification.md): independent references,
   acceptance budgets, tagged-source compatibility checks, and exact CI evidence.
 - [Contribution guide](CONTRIBUTING.md): checks and source-provenance requirements.
@@ -128,6 +130,7 @@ python3 tools/generate_orientation_fixtures.py --check
 python3 tools/generate_crossing_order_fixtures.py --check
 python3 tools/generate_parameter_enclosures.py --check
 python3 tools/generate_crossing_coordinate_enclosures.py --check
+python3 tools/generate_crossing_point_order.py --check
 python3 tools/check_package.py
 ```
 

@@ -2,6 +2,8 @@
 
 ## 0.2.0-alpha.1 (unreleased)
 
+- Compare exact raw-input proper-crossing points with each other and with
+  finite input points without rounding or fraction reduction.
 - Add tight finite coordinate enclosures for proper crossings without rounding
   the retained parameter or using process-global rounding modes.
 - Retain exact parameters for finite input points lying on nonzero segments.

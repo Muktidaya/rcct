@@ -316,6 +316,17 @@ fn crossing_coordinates_are_tightly_enclosed_without_rounding_parameter_first() 
     assert_eq!(exact_tiny.x().upper().to_bits(), 1);
     assert_eq!(exact_tiny.y().lower().to_bits(), 0);
     assert_eq!(exact_tiny.y().upper().to_bits(), 0);
+    let tiny_point = proper_crossing_witness(
+        segment((-f64::MAX, 0.0), (f64::MAX, 0.0)),
+        segment((tiny, -1.0), (tiny, 1.0)),
+    )
+    .unwrap()
+    .exact_point();
+    assert!(tiny_point.same_as_input(point(tiny, -0.0)));
+    assert_eq!(
+        tiny_point.compare_to_input(point(0.0, 0.0)),
+        Ordering::Greater
+    );
     let negative_half_subnormal = proper_crossing_witness(
         segment((0.0, 0.0), (-tiny, 1.0)),
         segment((-1.0, 0.5), (1.0, 0.5)),
@@ -356,11 +367,25 @@ fn crossing_coordinate_enclosures_match_independent_fraction_oracle() {
         let v: Vec<f64> = values[..8].iter().map(|&b| f64::from_bits(b)).collect();
         let a = segment((v[0], v[1]), (v[2], v[3]));
         let b = segment((v[4], v[5]), (v[6], v[7]));
-        let enclosure = proper_crossing_witness(a, b).unwrap().point_enclosure();
-        let swapped = proper_crossing_witness(b, a).unwrap().point_enclosure();
-        let reversed = proper_crossing_witness(segment((v[2], v[3]), (v[0], v[1])), b)
-            .unwrap()
-            .point_enclosure();
+        let original = proper_crossing_witness(a, b).unwrap();
+        let swapped_witness = proper_crossing_witness(b, a).unwrap();
+        let reversed_witness =
+            proper_crossing_witness(segment((v[2], v[3]), (v[0], v[1])), b).unwrap();
+        assert!(
+            original
+                .exact_point()
+                .same_point(&swapped_witness.exact_point()),
+            "swapped identity case {count}"
+        );
+        assert!(
+            original
+                .exact_point()
+                .same_point(&reversed_witness.exact_point()),
+            "reversed identity case {count}"
+        );
+        let enclosure = original.point_enclosure();
+        let swapped = swapped_witness.point_enclosure();
+        let reversed = reversed_witness.point_enclosure();
         let bit_bounds = |e: rcct::planar::CrossingEnclosure2| {
             (
                 e.x().lower().to_bits(),
@@ -392,4 +417,108 @@ fn crossing_coordinate_enclosures_match_independent_fraction_oracle() {
         count += 1;
     }
     assert_eq!(count, 512);
+}
+
+#[test]
+fn exact_crossing_identity_distinguishes_overlapping_enclosures() {
+    let base = segment((0.0, 0.0), (1.0, 0.0));
+    let oblique = segment((0.0, 1.0), (1.0, -2.0));
+    let exact = proper_crossing_witness(base, oblique)
+        .unwrap()
+        .exact_point();
+    let swapped = proper_crossing_witness(oblique, base)
+        .unwrap()
+        .exact_point();
+    assert!(exact.same_point(&swapped));
+    assert_eq!(exact.compare_lexicographically(&swapped), Ordering::Equal);
+    let rounded_third = f64::from_bits(0x3fd5_5555_5555_5555);
+    let close = proper_crossing_witness(base, segment((rounded_third, -1.0), (rounded_third, 1.0)))
+        .unwrap()
+        .exact_point();
+    assert_eq!(exact.enclosure().x().lower(), close.enclosure().x().lower());
+    assert_eq!(exact.compare_x(&close), Ordering::Greater);
+    assert_eq!(exact.compare_y(&close), Ordering::Equal);
+    assert!(!exact.same_point(&close));
+    assert_eq!(
+        exact.compare_to_input(point(rounded_third, 0.0)),
+        Ordering::Greater
+    );
+    assert!(!exact.same_as_input(point(rounded_third, 0.0)));
+    let above = proper_crossing_witness(
+        segment((0.0, 1.0), (1.0, 1.0)),
+        segment((0.0, 2.0), (1.0, -1.0)),
+    )
+    .unwrap()
+    .exact_point();
+    assert_eq!(exact.compare_x(&above), Ordering::Equal);
+    assert_eq!(exact.compare_y(&above), Ordering::Less);
+    assert_eq!(exact.compare_lexicographically(&above), Ordering::Less);
+}
+
+#[test]
+fn crossing_point_order_matches_independent_fraction_oracle() {
+    let mut count = 0;
+    for line in include_str!("fixtures/crossing_point_order.tsv")
+        .lines()
+        .filter(|line| !line.starts_with('#'))
+    {
+        let fields: Vec<_> = line.split('\t').collect();
+        assert_eq!(fields.len(), 19);
+        let values: Vec<f64> = fields[..16]
+            .iter()
+            .map(|s| f64::from_bits(u64::from_str_radix(s, 16).unwrap()))
+            .collect();
+        let crossing = |offset| {
+            let a = segment(
+                (values[offset], values[offset + 1]),
+                (values[offset + 2], values[offset + 3]),
+            );
+            let b = segment(
+                (values[offset + 4], values[offset + 5]),
+                (values[offset + 6], values[offset + 7]),
+            );
+            proper_crossing_witness(a, b).unwrap().exact_point()
+        };
+        let left = crossing(0);
+        let right = crossing(8);
+        let order = |s| match s {
+            "-1" => Ordering::Less,
+            "0" => Ordering::Equal,
+            "1" => Ordering::Greater,
+            _ => panic!("bad order"),
+        };
+        let x = order(fields[16]);
+        let y = order(fields[17]);
+        assert_eq!(left.compare_x(&right), x, "x case {count}");
+        assert_eq!(left.compare_y(&right), y, "y case {count}");
+        assert_eq!(
+            left.compare_lexicographically(&right),
+            if x == Ordering::Equal { y } else { x },
+            "lex case {count}"
+        );
+        assert_eq!(
+            left.same_point(&right),
+            x == Ordering::Equal && y == Ordering::Equal,
+            "identity case {count}"
+        );
+        assert_eq!(
+            left.compare_x(&right),
+            right.compare_x(&left).reverse(),
+            "antisymmetry case {count}"
+        );
+        let input = point(values[8], values[9]);
+        let input_order = order(fields[18]);
+        assert_eq!(
+            left.compare_to_input(input),
+            input_order,
+            "input case {count}"
+        );
+        assert_eq!(
+            left.same_as_input(input),
+            input_order == Ordering::Equal,
+            "input identity case {count}"
+        );
+        count += 1;
+    }
+    assert_eq!(count, 256);
 }

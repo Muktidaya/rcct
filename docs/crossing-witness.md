@@ -42,6 +42,13 @@ rectangle contains the crossing but is not its identity or a general rational
 point. Exact zero is returned as positive zero; a negative value between zero
 and the least negative subnormal has negative zero as its upper bound.
 
+`ProperCrossing2::exact_point` retains exact rational coordinate numerators and
+a positive denominator. `ExactCrossingPoint2` compares x and y, lexicographic
+order, and equality across independently constructed crossings, and compares
+against finite input points. It compares exact cross-products, not enclosure
+overlap or unreduced numerator/denominator bytes. This bounded raw-input point
+cannot yet be supplied as a segment endpoint for another cut.
+
 ## Representation decision and capacity
 
 Rounding a crossing to binary64 loses identity, as a crossing can be at 1/3.
@@ -83,11 +90,18 @@ Since `0 < n/d < 1`, the coordinate lies between its finite endpoints. A binary
 search over ordered finite binary64 bit patterns therefore finds tight bounds
 without infinity, rounded interpolation or process-global rounding changes.
 
+Comparing two independently constructed coordinate numerators, each below
+`2^6298`, against the other positive denominator, below `2^4199`, requires
+products below `2^10497`. The comparator uses 165 limbs (10560 bits), with sign
+handled separately. Comparing against a finite binary64 input coordinate uses
+the existing 99-limb coordinate-product bound. No fixed bound here extends to
+arbitrary chains of rational constructions.
+
 Zero-length segments do not produce these parameter witnesses. The separate
 `ClosedSegment2` API classifies point-segment contacts and returns the original
 point without a parameter; `point_on_segment_witness` can provide one when the
 source segment is nonzero. Exact constructed crossing coordinates as reusable
-rational inputs, ordering across different source segments, rational inputs,
+rational inputs, parameter ordering across different source segments, rational inputs,
 and repeated constructed cuts are not provided by these APIs. `None` from
 `proper_crossing_witness` means the intersection is not a proper crossing;
 `None` from `endpoint_touch_witness` means it is not a single-point touch.
@@ -107,3 +121,7 @@ than a proof or qualification.
 Crossing-coordinate bounds are also checked against 512 independent `Fraction`
 cases with independently scaled axes, plus source swap, endpoint reversal,
 subnormal, exact-value and extreme finite cases.
+Exact point comparison is checked against 256 independent `Fraction` pairs and
+cases where binary64 enclosures overlap but exact coordinates differ. The
+[repeated-cut prerequisites](repeated-cut-prerequisites.md) describe the next
+arithmetic and topology gates.

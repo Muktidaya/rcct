@@ -38,6 +38,11 @@ coordinate bounds for proper crossings with varied axis scales. Its Python
 `Fraction` generator is `tools/generate_crossing_coordinate_enclosures.py`; use
 `--check` to verify the fixture.
 
+`crossing_point_order.tsv` compares pairs of the coordinate-enclosure input
+cases with an independently evaluated Python `Fraction` oracle. Generate or
+verify it with `tools/generate_crossing_point_order.py` after verifying its
+source fixture.
+
 ## Acceptance budgets
 
 These are empirical release test thresholds, not universal API accuracy claims.

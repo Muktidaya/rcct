@@ -86,7 +86,8 @@ order events on the same directed first segment. See [their contract](crossing-w
 parameters in first-segment order. Constructed rational inputs remain outside
 these APIs. Each retained parameter can provide a tight binary64 enclosure;
 proper crossing witnesses can separately provide tight coordinate enclosures
-computed from the exact retained construction.
+computed from the exact retained construction. They can also retain exact
+crossing-point identity and compare it across supported raw-input crossings.
 
 ## Simple closed wires
 
