@@ -66,7 +66,9 @@ also fits: 66 predicate limbs times 33 coordinate limbs need at most 99 limbs.
 The ordered positive binary64 bit patterns between zero and one permit a
 bounded binary search, including subnormal and exact endpoint cases.
 
-Zero-length segments, constructed crossing coordinates and their enclosures,
+Zero-length segments do not produce these parameter witnesses. The separate
+`ClosedSegment2` API classifies point-segment contacts and returns the original
+point without a parameter. Constructed crossing coordinates and their enclosures,
 ordering across different source segments, rational inputs,
 and repeated constructed cuts are not provided by these APIs. `None` from
 `proper_crossing_witness` means the intersection is not a proper crossing;

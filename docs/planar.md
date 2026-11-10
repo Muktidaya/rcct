@@ -17,6 +17,14 @@ point or segment.
 with exact orientation and coordinate ordering. Endpoints are included; no
 tolerance is applied. It does not construct or round a projected point.
 
+`ClosedSegment2::from_endpoints` additionally represents equal endpoints as a
+point segment. `intersect_closed_segments` classifies point/point and
+point/nonzero contacts using exact point equality and closed containment. It
+returns the original point for those contacts without a parameter; a degenerate
+first segment has no directed parameter. For two nonzero segments it reports
+the existing event class, and callers can request the corresponding witness.
+`SimpleWire2` still rejects zero-length edges.
+
 Equality is exact `f64` equality. Thus `+0.0` and `-0.0` compare equal, while
 nearby representable values remain distinct. This is identity of stored
 coordinates, not an assertion about physical measurement accuracy.

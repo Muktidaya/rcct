@@ -607,6 +607,87 @@ pub fn overlap_witness(first: Segment2, second: Segment2) -> Option<SegmentOverl
     })
 }
 
+/// A closed finite segment set, including the degenerate case of a point.
+///
+/// The point variant has no directed parameter. Nonzero segments retain their
+/// directed endpoints and can produce the existing exact event witnesses.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum ClosedSegment2 {
+    /// Two equal endpoints, interpreted as one point.
+    Point(Point2),
+    /// A nonzero directed segment.
+    Segment(Segment2),
+}
+
+impl ClosedSegment2 {
+    /// Constructs the point or nonzero segment set from checked finite endpoints.
+    pub fn from_endpoints(start: Point2, end: Point2) -> Self {
+        if start == end {
+            Self::Point(start)
+        } else {
+            Self::Segment(Segment2 { start, end })
+        }
+    }
+}
+
+/// The exact intersection of two closed finite segment sets.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum ClosedSegmentIntersection2 {
+    /// The two sets are disjoint.
+    Disjoint,
+    /// A contact involving at least one point segment, retaining that input point.
+    ///
+    /// A degenerate first segment has no parameter; no order is implied here.
+    PointContact(Point2),
+    /// A proper crossing of two nonzero segments.
+    ProperCrossing,
+    /// A single-point boundary touch of two nonzero segments.
+    EndpointTouch,
+    /// A positive-length overlap of two nonzero segments.
+    Overlap,
+}
+
+/// Intersects closed finite segment sets, including point segments.
+///
+/// For two nonzero segments, request the corresponding raw-input witness
+/// separately when needed. A point segment intersecting another set returns the
+/// original point, without a segment parameter. No tolerance, rounding or
+/// general rational construction is used.
+pub fn intersect_closed_segments(
+    first: ClosedSegment2,
+    second: ClosedSegment2,
+) -> ClosedSegmentIntersection2 {
+    match (first, second) {
+        (ClosedSegment2::Point(a), ClosedSegment2::Point(b)) => {
+            if a == b {
+                ClosedSegmentIntersection2::PointContact(a)
+            } else {
+                ClosedSegmentIntersection2::Disjoint
+            }
+        }
+        (ClosedSegment2::Point(p), ClosedSegment2::Segment(s))
+        | (ClosedSegment2::Segment(s), ClosedSegment2::Point(p)) => {
+            if s.contains(p) {
+                ClosedSegmentIntersection2::PointContact(p)
+            } else {
+                ClosedSegmentIntersection2::Disjoint
+            }
+        }
+        (ClosedSegment2::Segment(a), ClosedSegment2::Segment(b)) => {
+            match intersect_segments(a, b) {
+                SegmentIntersection::Disjoint => ClosedSegmentIntersection2::Disjoint,
+                SegmentIntersection::Point(SegmentPointEvent::ProperCrossing) => {
+                    ClosedSegmentIntersection2::ProperCrossing
+                }
+                SegmentIntersection::Point(SegmentPointEvent::BoundaryTouch) => {
+                    ClosedSegmentIntersection2::EndpointTouch
+                }
+                SegmentIntersection::Overlap => ClosedSegmentIntersection2::Overlap,
+            }
+        }
+    }
+}
+
 fn point_on_both(first: Segment2, second: Segment2, p: Point2) -> bool {
     first.contains(p) && second.contains(p)
 }

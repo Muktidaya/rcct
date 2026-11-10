@@ -2,6 +2,8 @@
 
 ## 0.2.0-alpha.1 (unreleased)
 
+- Classify closed finite segment sets with zero-length point segments, retaining
+  an original point for contact without inventing a directed parameter.
 - Add tight binary64 enclosures for exact retained segment parameters, using
   integer comparison without rounded division.
 - Add exact closed-segment point containment for finite binary64 inputs.

@@ -49,6 +49,7 @@ Choose the type by what the value represents:
 | `Point2` | A checked finite planar location | Construct with `Point2::try_new`; nonfinite coordinates are rejected. |
 | `Aabb2` | Closed finite axis-aligned planar bounds | Degenerate boxes and boundary contact are allowed. |
 | `Segment2` | A checked nonzero finite segment | Construction rejects equal endpoints. |
+| `ClosedSegment2` | A finite segment set that may be a point | Point-segment contacts do not return a parameter. |
 | `SimpleWire2` | A validated simple closed polygonal wire | Ordered vertices define an implicit closing edge. |
 
 Frames and units are caller-owned, not encoded in these types. The source-level

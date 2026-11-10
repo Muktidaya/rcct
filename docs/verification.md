@@ -210,3 +210,14 @@ exact rational. This corpus is finite evidence, not a formal proof.
 Rust 1.99.1 formatting, Clippy, debug/release tests, rustdoc, all four fixture
 checks, and the dirty-candidate package/downstream check passed locally for
 these increments. Hosted CI was not run.
+
+### Degenerate point segments
+
+`intersect_closed_segments` is compared with an independent integer oracle for
+all 6,561 ordered endpoint-pair combinations on a 3 by 3 grid, including
+zero-length point segments. Separate cases cover signed zero and
+maximum/subnormal coordinates. Point contact returns an input point without a
+parameter; nonzero event witnesses remain separate APIs.
+Rust 1.99.1 formatting, Clippy, debug/release tests, rustdoc, all fixture
+checks, and the dirty-candidate package/downstream check passed locally after
+this change. Hosted CI was not run.

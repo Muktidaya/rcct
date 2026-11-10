@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use rcct::planar::{
-    Point2, Segment2, SegmentIntersection, SegmentPointEvent, endpoint_touch_witness,
-    intersect_segments, overlap_witness, proper_crossing_witness,
+    ClosedSegment2, ClosedSegmentIntersection2, Point2, Segment2, SegmentIntersection,
+    SegmentPointEvent, endpoint_touch_witness, intersect_closed_segments, intersect_segments,
+    overlap_witness, proper_crossing_witness,
 };
 
 type P = (i64, i64);
@@ -122,6 +123,86 @@ fn point_containment_matches_independent_integer_oracle() {
     .unwrap();
     assert!(s.contains(Point2::try_new(tiny, 0.0).unwrap()));
     assert!(!s.contains(Point2::try_new(tiny, tiny).unwrap()));
+}
+
+#[test]
+fn closed_segment_sets_match_independent_small_grid_oracle() {
+    let points: Vec<P> = (-1..=1)
+        .flat_map(|x| (-1..=1).map(move |y| (x, y)))
+        .collect();
+    let pairs: Vec<_> = points
+        .iter()
+        .flat_map(|&a| points.iter().map(move |&b| (a, b)))
+        .collect();
+    assert_eq!(pairs.len(), 81);
+    for &(a, b) in &pairs {
+        for &(c, d) in &pairs {
+            let p = |p: P| Point2::try_new(p.0 as f64, p.1 as f64).unwrap();
+            let first = ClosedSegment2::from_endpoints(p(a), p(b));
+            let second = ClosedSegment2::from_endpoints(p(c), p(d));
+            let result = intersect_closed_segments(first, second);
+            if a == b || c == d {
+                let expected_point = if a == b { a } else { c };
+                let present = if a == b && c == d {
+                    a == c
+                } else if a == b {
+                    on_segment(c, d, a)
+                } else {
+                    on_segment(a, b, c)
+                };
+                match result {
+                    ClosedSegmentIntersection2::PointContact(actual) if present => {
+                        assert_eq!(actual, p(expected_point))
+                    }
+                    ClosedSegmentIntersection2::Disjoint if !present => (),
+                    _ => panic!("wrong point-segment result: {a:?} {b:?} {c:?} {d:?}"),
+                }
+            } else {
+                let agrees = matches!(
+                    (expected(a, b, c, d), result),
+                    (
+                        SegmentIntersection::Disjoint,
+                        ClosedSegmentIntersection2::Disjoint
+                    ) | (
+                        SegmentIntersection::Point(SegmentPointEvent::ProperCrossing),
+                        ClosedSegmentIntersection2::ProperCrossing
+                    ) | (
+                        SegmentIntersection::Point(SegmentPointEvent::BoundaryTouch),
+                        ClosedSegmentIntersection2::EndpointTouch
+                    ) | (
+                        SegmentIntersection::Overlap,
+                        ClosedSegmentIntersection2::Overlap
+                    )
+                );
+                assert!(agrees, "wrong nonzero result: {a:?} {b:?} {c:?} {d:?}");
+            }
+        }
+    }
+}
+
+#[test]
+fn point_segment_contacts_respect_extremes_and_signed_zero() {
+    let p = |x, y| Point2::try_new(x, y).unwrap();
+    let max = f64::MAX;
+    let tiny = f64::from_bits(1);
+    let whole = ClosedSegment2::from_endpoints(p(-max, 0.0), p(max, -0.0));
+    let on = ClosedSegment2::from_endpoints(p(tiny, 0.0), p(tiny, -0.0));
+    let off = ClosedSegment2::from_endpoints(p(tiny, tiny), p(tiny, tiny));
+    assert!(
+        matches!(intersect_closed_segments(on,whole), ClosedSegmentIntersection2::PointContact(point) if point == p(tiny,0.0))
+    );
+    assert!(
+        matches!(intersect_closed_segments(whole,on), ClosedSegmentIntersection2::PointContact(point) if point == p(tiny,0.0))
+    );
+    assert!(matches!(
+        intersect_closed_segments(off, whole),
+        ClosedSegmentIntersection2::Disjoint
+    ));
+    let z = ClosedSegment2::from_endpoints(p(0.0, -0.0), p(-0.0, 0.0));
+    assert!(matches!(
+        intersect_closed_segments(z, z),
+        ClosedSegmentIntersection2::PointContact(_)
+    ));
 }
 
 fn input_parameter(a: P, b: P, p: P) -> (i64, i64) {
