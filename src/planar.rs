@@ -318,28 +318,21 @@ pub fn intersect_segments(first: Segment2, second: Segment2) -> SegmentIntersect
     SegmentIntersection::Disjoint
 }
 
-/// An exact proper-crossing witness for two finite, nonzero input segments.
+/// An exact parameter on a finite directed input segment.
 ///
-/// The witness retains both original segments and the exact rational parameter
-/// on the first directed segment. It is limited to intersections of raw
-/// binary64 endpoints; it is not a general rational point or a rounded location.
+/// Values are produced by supported intersection witnesses and can be ordered
+/// on the same directed segment. They are not general rational numbers.
 #[derive(Clone, Copy)]
-pub struct ProperCrossing2 {
+pub struct SegmentParameter2 {
     first: Segment2,
-    second: Segment2,
     numerator: PredicateInteger,
     denominator: PredicateInteger,
 }
 
-impl ProperCrossing2 {
-    /// Returns the first directed source segment, whose parameter defines order.
-    pub const fn first_segment(&self) -> Segment2 {
+impl SegmentParameter2 {
+    /// Returns the directed source segment whose parameter defines order.
+    pub const fn segment(&self) -> Segment2 {
         self.first
-    }
-
-    /// Returns the second source segment.
-    pub const fn second_segment(&self) -> Segment2 {
-        self.second
     }
 
     /// Compares exact parameters on the same directed first segment.
@@ -353,6 +346,42 @@ impl ProperCrossing2 {
         let left = multiply_predicate_magnitudes(self.numerator, other.denominator);
         let right = multiply_predicate_magnitudes(other.numerator, self.denominator);
         Some(left.iter().rev().cmp(right.iter().rev()))
+    }
+}
+
+/// An exact proper-crossing witness for two finite, nonzero input segments.
+///
+/// The witness retains both original segments and the exact rational parameter
+/// on the first directed segment. It is limited to intersections of raw
+/// binary64 endpoints; it is not a general rational point or a rounded location.
+#[derive(Clone, Copy)]
+pub struct ProperCrossing2 {
+    second: Segment2,
+    parameter: SegmentParameter2,
+}
+
+impl ProperCrossing2 {
+    /// Returns the first directed source segment, whose parameter defines order.
+    pub const fn first_segment(&self) -> Segment2 {
+        self.parameter.first
+    }
+
+    /// Returns the second source segment.
+    pub const fn second_segment(&self) -> Segment2 {
+        self.second
+    }
+
+    /// Returns the exact parameter for comparison with other supported events.
+    pub const fn parameter(&self) -> SegmentParameter2 {
+        self.parameter
+    }
+
+    /// Compares exact parameters on the same directed first segment.
+    ///
+    /// Returns `None` when the first segments differ, including reversed traversal.
+    /// Distinct rational representations of the same parameter compare equal.
+    pub fn compare_on_first(&self, other: &Self) -> Option<Ordering> {
+        self.parameter.compare_on_first(&other.parameter)
     }
 }
 
@@ -380,11 +409,99 @@ pub fn proper_crossing_witness(first: Segment2, second: Segment2) -> Option<Prop
     debug_assert!(denominator.sign() == Ordering::Greater);
     debug_assert!(numerator.magnitude_cmp(denominator) == Ordering::Less);
     Some(ProperCrossing2 {
-        first,
         second,
-        numerator,
-        denominator,
+        parameter: SegmentParameter2 {
+            first,
+            numerator,
+            denominator,
+        },
     })
+}
+
+/// An endpoint-touch witness containing the original exact binary64 endpoint.
+#[derive(Clone, Copy)]
+pub struct EndpointTouch2 {
+    second: Segment2,
+    point: Point2,
+    parameter: SegmentParameter2,
+}
+
+impl EndpointTouch2 {
+    /// Returns the first directed source segment.
+    pub const fn first_segment(&self) -> Segment2 {
+        self.parameter.first
+    }
+    /// Returns the second source segment.
+    pub const fn second_segment(&self) -> Segment2 {
+        self.second
+    }
+    /// Returns an original input endpoint at the contact, with no construction rounding.
+    pub const fn point(&self) -> Point2 {
+        self.point
+    }
+    /// Returns the exact parameter on the first directed segment.
+    pub const fn parameter(&self) -> SegmentParameter2 {
+        self.parameter
+    }
+}
+
+/// Retains the source endpoint and exact first-segment parameter for a single-point touch.
+///
+/// This includes collinear segments meeting at one endpoint. It returns `None`
+/// for proper crossings, overlaps, and disjoint segments; use
+/// [`intersect_segments`] to distinguish those cases.
+pub fn endpoint_touch_witness(first: Segment2, second: Segment2) -> Option<EndpointTouch2> {
+    if intersect_segments(first, second)
+        != SegmentIntersection::Point(SegmentPointEvent::BoundaryTouch)
+    {
+        return None;
+    }
+    let point = [first.start, first.end, second.start, second.end]
+        .into_iter()
+        .find(|&p| {
+            orient2d(first.start, first.end, p) == Orientation2::Collinear
+                && on_segment(first.start, first.end, p)
+                && orient2d(second.start, second.end, p) == Orientation2::Collinear
+                && on_segment(second.start, second.end, p)
+        })
+        .expect("a single-point boundary touch has a source endpoint");
+    let (a, b, p) = if first.start.x != first.end.x {
+        (first.start.x, first.end.x, point.x)
+    } else {
+        (first.start.y, first.end.y, point.y)
+    };
+    let numerator = widen_coordinate(
+        CoordinateInteger::from_finite_f64(p).subtract(CoordinateInteger::from_finite_f64(a)),
+    );
+    let denominator = widen_coordinate(
+        CoordinateInteger::from_finite_f64(b).subtract(CoordinateInteger::from_finite_f64(a)),
+    );
+    let (numerator, denominator) = if denominator.negative {
+        (numerator.negate(), denominator.negate())
+    } else {
+        (numerator, denominator)
+    };
+    debug_assert!(numerator.sign() != Ordering::Less);
+    debug_assert!(denominator.sign() == Ordering::Greater);
+    debug_assert!(numerator.magnitude_cmp(denominator) != Ordering::Greater);
+    Some(EndpointTouch2 {
+        second,
+        point,
+        parameter: SegmentParameter2 {
+            first,
+            numerator,
+            denominator,
+        },
+    })
+}
+
+fn widen_coordinate(value: CoordinateInteger) -> PredicateInteger {
+    let mut limbs = [0; PREDICATE_LIMBS];
+    limbs[..COORDINATE_LIMBS].copy_from_slice(&value.limbs);
+    PredicateInteger {
+        limbs,
+        negative: value.negative,
+    }
 }
 
 // Computes (a - b) × (c - d) without rounded coordinate subtraction.

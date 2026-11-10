@@ -182,3 +182,10 @@ equal unreduced fractions, extreme values, differing source segments and
 nonproper cases. On Rust 1.99.1, formatting, Clippy, debug/release tests,
 warnings-denied documentation, all three fixture checks, and the dirty-candidate
 package/downstream check passed locally. No hosted CI or formal proof is claimed.
+
+An independent local probe additionally compared 2,000 pairs of general proper
+crossings with independently scaled coordinate axes across the finite binary64
+exponent range against Python `Fraction` parameters. The probe was temporary;
+its results are not a proof or a bundled test. Endpoint witnesses and their
+ordering alongside proper crossings are covered by the persistent exhaustive
+small-grid integer oracle and an adversarial maximum/subnormal scale case.

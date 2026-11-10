@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
-use rcct::planar::{Point2, ProperCrossing2, Segment2, proper_crossing_witness};
+use rcct::planar::{
+    Point2, ProperCrossing2, Segment2, endpoint_touch_witness, proper_crossing_witness,
+};
 use std::cmp::Ordering;
 
 fn point(x: f64, y: f64) -> Point2 {
@@ -114,4 +116,37 @@ fn orders_general_integer_crossings_against_fraction_oracle() {
         count += 1;
     }
     assert_eq!(count, 256);
+}
+
+#[test]
+fn endpoint_parameters_order_against_proper_crossings_at_extreme_scale() {
+    let max = f64::MAX;
+    let tiny = f64::from_bits(1);
+    let first = segment((-max, 0.0), (max, 0.0));
+    let middle = proper_crossing_witness(first, segment((0.0, -1.0), (0.0, 1.0))).unwrap();
+    let touch = endpoint_touch_witness(first, segment((tiny, 0.0), (tiny, 1.0))).unwrap();
+    assert_eq!(touch.point(), point(tiny, 0.0));
+    assert_eq!(
+        touch.parameter().compare_on_first(&middle.parameter()),
+        Some(Ordering::Greater)
+    );
+    let reversed = segment((max, 0.0), (-max, 0.0));
+    let reverse_touch =
+        endpoint_touch_witness(reversed, segment((tiny, 0.0), (tiny, 1.0))).unwrap();
+    assert_eq!(
+        touch
+            .parameter()
+            .compare_on_first(&reverse_touch.parameter()),
+        None
+    );
+}
+
+#[test]
+fn collinear_single_endpoint_contact_preserves_source_point() {
+    let first = segment((0.0, 0.0), (1.0, 0.0));
+    let touch = endpoint_touch_witness(first, segment((1.0, -0.0), (2.0, 0.0))).unwrap();
+    assert_eq!(touch.point(), point(1.0, 0.0));
+    assert_eq!(touch.first_segment(), first);
+    assert_eq!(touch.second_segment(), segment((1.0, -0.0), (2.0, 0.0)));
+    assert!(endpoint_touch_witness(first, segment((0.5, 0.0), (2.0, 0.0))).is_none());
 }

@@ -1,7 +1,7 @@
 # Exact proper-crossing witnesses
 
-This first construction covers proper crossings of two nonzero straight
-segments whose endpoints are finite binary64 values. `proper_crossing_witness`
+This construction covers proper crossings and single-point endpoint touches of
+two nonzero straight segments whose endpoints are finite binary64 values. `proper_crossing_witness`
 retains the input segments and the exact parameter `t` on the first directed
 segment. The crossing is defined as `a + t(b-a)` in exact arithmetic; the API
 does not round it to `Point2`.
@@ -12,6 +12,13 @@ For `r=b-a`, `s=d-c`, and `q=c-a`, the parameter is
 numerator and denominator need not be reduced: equality and ordering compare
 cross-products exactly. `compare_on_first` requires identical directed first
 segments; a reversed or different source returns `None`.
+
+`endpoint_touch_witness` retains both segments and an original input endpoint
+at the contact, including collinear segments that meet at a single point. It
+computes a first-segment parameter as the exact ratio of coordinate differences
+on an axis where the first segment varies. `SegmentParameter2` compares the
+parameters from both witness types on the same directed source segment. Point
+coordinates retain their original binary64 values; signed zeros compare equal.
 
 ## Representation decision and capacity
 
@@ -29,16 +36,24 @@ denominator fits in 66 64-bit limbs. Comparing two such parameters needs two
 products below `2^8398`, which fit in 132 limbs (8448 bits). These bounds apply
 only to determinants formed from original finite binary64 coordinates. They do
 not apply to repeated cuts or arbitrary rational constructions. Carry and
-capacity behavior still requires independent review and is not formally proved.
+capacity behavior is not formally proved. For a limb product, the largest
+`u64 * u64` term plus an existing output limb and a carry is at most
+`2^128 - 1`; it fits in `u128`. An endpoint parameter uses coordinate
+differences below `2^2099`, so its products with either kind of parameter also
+fit the 132-limb comparison capacity. These bounds depend on the raw finite
+input contract and the stated integer representation.
 
-Endpoint contacts, collinear overlaps, zero-length segments, exact coordinates,
+Collinear overlaps, zero-length segments, constructed crossing coordinates,
 floating enclosures, ordering across different source segments, rational inputs,
-and repeated constructed cuts are not provided by this API. `None` from the
-constructor means only that the intersection is not a proper crossing; use the
-existing classifier to distinguish other events. Future work must address those
-cases explicitly before treating the segment milestone as complete.
+and repeated constructed cuts are not provided by these APIs. `None` from
+`proper_crossing_witness` means the intersection is not a proper crossing;
+`None` from `endpoint_touch_witness` means it is not a single-point touch.
+Use the existing classifier to distinguish other events. Future work must
+address those cases explicitly before treating the segment milestone as complete.
 
 `tests/crossing_witness.rs` checks equal unreduced fractions, ordering,
-different source segments, nonproper events, extreme exponents, and 768 cases
-whose expected order is independently generated with Python `Fraction`. The
-tests are finite evidence rather than a proof or qualification.
+different source segments, endpoint contacts, extreme exponents, and 768 cases
+whose expected order is independently generated with Python `Fraction`.
+`tests/planar_segment_oracle.rs` compares endpoint and crossing parameters on
+the small integer grid against a separate integer parametric oracle. The tests
+are finite evidence rather than a proof or qualification.

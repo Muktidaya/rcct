@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
-use rcct::planar::{Point2, Segment2, SegmentIntersection, SegmentPointEvent, intersect_segments};
+use rcct::planar::{
+    Point2, Segment2, SegmentIntersection, SegmentPointEvent, endpoint_touch_witness,
+    intersect_segments, proper_crossing_witness,
+};
 
 type P = (i64, i64);
 fn sub(a: P, b: P) -> P {
@@ -82,4 +85,83 @@ fn all_small_grid_segment_pairs_match_parametric_oracle() {
             );
         }
     }
+}
+
+fn on_segment(a: P, b: P, p: P) -> bool {
+    cross(sub(b, a), sub(p, a)) == 0
+        && (a.0.min(b.0)..=a.0.max(b.0)).contains(&p.0)
+        && (a.1.min(b.1)..=a.1.max(b.1)).contains(&p.1)
+}
+
+#[test]
+fn endpoint_and_proper_event_parameters_match_integer_oracle() {
+    let points: Vec<P> = (-1..=1)
+        .flat_map(|x| (-1..=1).map(move |y| (x, y)))
+        .collect();
+    let segments: Vec<_> = points
+        .iter()
+        .flat_map(|&a| {
+            points
+                .iter()
+                .filter(move |&&b| a != b)
+                .map(move |&b| (a, b))
+        })
+        .collect();
+    let mut comparisons = 0;
+    for &(a, b) in &segments {
+        let first = segment(a, b);
+        let mut events = Vec::new();
+        for &(c, d) in &segments {
+            let second = segment(c, d);
+            match expected(a, b, c, d) {
+                SegmentIntersection::Point(SegmentPointEvent::BoundaryTouch) => {
+                    let p = [a, b, c, d]
+                        .into_iter()
+                        .find(|&p| on_segment(a, b, p) && on_segment(c, d, p))
+                        .unwrap();
+                    let witness = endpoint_touch_witness(first, second).unwrap();
+                    assert_eq!(
+                        witness.point(),
+                        Point2::try_new(p.0 as f64, p.1 as f64).unwrap()
+                    );
+                    let (mut numerator, mut denominator) = if a.0 != b.0 {
+                        (p.0 - a.0, b.0 - a.0)
+                    } else {
+                        (p.1 - a.1, b.1 - a.1)
+                    };
+                    if denominator < 0 {
+                        numerator = -numerator;
+                        denominator = -denominator;
+                    }
+                    events.push((witness.parameter(), numerator, denominator));
+                }
+                SegmentIntersection::Point(SegmentPointEvent::ProperCrossing) => {
+                    let (r, s, q) = (sub(b, a), sub(d, c), sub(c, a));
+                    let (mut numerator, mut denominator) = (cross(q, s), cross(r, s));
+                    if denominator < 0 {
+                        numerator = -numerator;
+                        denominator = -denominator;
+                    }
+                    events.push((
+                        proper_crossing_witness(first, second).unwrap().parameter(),
+                        numerator,
+                        denominator,
+                    ));
+                    assert!(endpoint_touch_witness(first, second).is_none());
+                }
+                _ => assert!(endpoint_touch_witness(first, second).is_none()),
+            }
+        }
+        for (left, ln, ld) in &events {
+            for (right, rn, rd) in &events {
+                assert_eq!(
+                    left.compare_on_first(right),
+                    Some((ln * rd).cmp(&(rn * ld))),
+                    "first={a:?} to {b:?}"
+                );
+                comparisons += 1;
+            }
+        }
+    }
+    assert!(comparisons > 10000);
 }
