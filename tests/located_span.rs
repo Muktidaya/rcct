@@ -218,6 +218,7 @@ fn extreme_scale_locations_preserve_exact_incidence() {
 fn repeated_transfer_preserves_origin_and_failures_are_atomic() {
     let source = s((0, 0), (1, 0));
     let point = constructed((0, 0), (1, 0), 1, 3);
+    let mut retained = point;
     let mut budget = SpanLocationBudget::new(24);
     for k in 1..=20 {
         let target = if k % 2 == 0 {
@@ -225,11 +226,12 @@ fn repeated_transfer_preserves_origin_and_failures_are_atomic() {
         } else {
             s((k, 0), (-k, 0))
         };
-        let location = LocatedPoint2::locate(target, point, &mut budget)
+        let location = LocatedPoint2::locate(target, retained, &mut budget)
             .unwrap()
             .unwrap();
         assert!(location.retained_parameter().segment() == source);
         assert!(location.retained_parameter().same_point(&point));
+        retained = location.retained_parameter();
     }
     assert!(
         LocatedPoint2::locate(s((0, 1), (1, 1)), point, &mut budget)

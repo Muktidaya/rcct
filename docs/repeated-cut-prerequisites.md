@@ -56,9 +56,11 @@ source provenance. Point segments have no directed parameter and need explicit
 incidence handling. Construction should operate in a draft and publish only after
 all required comparisons, splits and structural checks succeed within budget.
 
-No arrangement or general rational intersection API is provided by the current
-crate. Located spans split and intersect subsets of original raw supports; they
-do not create arbitrary rational lines or second-generation crossing points.
+The current [bounded arrangement graph](planar-arrangement.md) merges exact
+points and coincident raw-segment pieces while retaining source uses. It has no
+faces or half-edges. Located spans split and intersect subsets of original raw
+supports; they do not create arbitrary rational lines or second-generation
+crossing points. No general rational intersection API is provided.
 Required evidence includes independent rational oracles for
 second and later cuts, equivalent unreduced representations, exact equality
 across distinct sources, collinear overlap and coincident events, exponent and

@@ -284,6 +284,23 @@ dirty-candidate packaged crate and downstream compatibility checks in both
 profiles passed locally. These finite checks are not a formal proof. Hosted CI
 and visual inspection of rendered documentation were not run.
 
+### Bounded straight-segment arrangement graph
+
+An independent reduced signed-`i128` rational oracle constructs expected
+vertices, undirected pieces, and directed source uses for 400 generated small
+arrangements. Tests compare all three sets and check each source's ordered,
+continuous traversal. Focused cases cover partial and reversed coincident
+segments, T-junctions, concurrent rational crossings, extreme finite and
+subnormal coordinates, every resource-limit class, and unchanged inputs and
+previously returned graphs on failure. The located-point review also exercises
+repeated transfers by using each retained result as the next input.
+
+On Rust 1.99.1, formatting, Clippy with warnings denied, debug/release tests and
+doctests, warnings-denied rustdoc, all eight fixture checks, and the
+dirty-candidate packaged-crate/downstream checks in both profiles passed
+locally. These finite checks are not a formal proof. At this local record,
+hosted CI and visual inspection of rendered documentation had not been run.
+
 ### Located points and spans
 
 An independent signed-`i128` rational determinant and closed-bounds oracle

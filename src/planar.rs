@@ -16,6 +16,12 @@
 use std::cmp::Ordering;
 use std::fmt;
 
+mod arrangement;
+pub use arrangement::{
+    Arrangement2, ArrangementEdge2, ArrangementEdgeUse2, ArrangementError2, ArrangementLimits2,
+    ArrangementResource2, ArrangementVertex2, build_arrangement2,
+};
+
 const COORDINATE_LIMBS: usize = 33;
 const PREDICATE_LIMBS: usize = 66;
 
@@ -391,6 +397,25 @@ impl SegmentParameter2 {
     /// Returns whether these parameters represent the same exact point.
     pub fn same_point(&self, other: &Self) -> bool {
         self.compare_point_lexicographically(other) == Ordering::Equal
+    }
+
+    /// Returns tight binary64 coordinate enclosures for the retained point.
+    ///
+    /// The bounds are evaluated from the exact original parameter, not a
+    /// rounded parameter or point. This fixed-width operation does not turn the
+    /// enclosure into a point identity or consume an arrangement budget.
+    pub fn point_enclosure(&self) -> CrossingEnclosure2 {
+        let segment = self.first;
+        CrossingEnclosure2 {
+            x: enclose_crossing_coordinate(
+                crossing_coordinate_numerator(segment.start.x, segment.end.x, self),
+                self.denominator,
+            ),
+            y: enclose_crossing_coordinate(
+                crossing_coordinate_numerator(segment.start.y, segment.end.y, self),
+                self.denominator,
+            ),
+        }
     }
 
     /// Returns the tight binary64 enclosure of this exact parameter in `[0, 1]`.

@@ -94,7 +94,8 @@ these budgets; rejected split attempts are also uncharged. Callers must bound
 their own attempts and storage when those limits matter.
 
 This interface does not accept arbitrary rational segment endpoints or a point
-cutter. It does not materialize numerical overlap parameters on another target,
-implement general second-generation rational intersections, or build an
-arrangement. Exact point comparison does not by itself assign or manage shared
-arrangement identities. The tests are finite evidence, not a formal proof.
+cutter. It does not materialize numerical overlap parameters on another target
+or implement general second-generation rational intersections. Exact point
+comparison does not by itself assign shared arrangement identities; the separate
+[bounded arrangement graph](planar-arrangement.md) handles those for raw segment
+inputs. The tests are finite evidence, not a formal proof.

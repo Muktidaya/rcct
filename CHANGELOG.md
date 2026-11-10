@@ -2,6 +2,8 @@
 
 ## 0.2.0-alpha.1 (unreleased)
 
+- Build resource-bounded raw straight-segment arrangement graphs with exact
+  shared vertices, merged coincident edges, source uses and atomic failure.
 - Locate retained exact points on other raw supports, then split and intersect
   provenance-preserving spans without materializing wider parameter fractions.
 - Intersect pairs of original-support spans and compare retained parameter points
