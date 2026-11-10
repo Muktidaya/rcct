@@ -2,7 +2,7 @@
 
 use rcct::planar::{
     Point2, Segment2, SegmentIntersection, SegmentPointEvent, endpoint_touch_witness,
-    intersect_segments, proper_crossing_witness,
+    intersect_segments, overlap_witness, proper_crossing_witness,
 };
 
 type P = (i64, i64);
@@ -93,8 +93,21 @@ fn on_segment(a: P, b: P, p: P) -> bool {
         && (a.1.min(b.1)..=a.1.max(b.1)).contains(&p.1)
 }
 
+fn input_parameter(a: P, b: P, p: P) -> (i64, i64) {
+    let (mut numerator, mut denominator) = if a.0 != b.0 {
+        (p.0 - a.0, b.0 - a.0)
+    } else {
+        (p.1 - a.1, b.1 - a.1)
+    };
+    if denominator < 0 {
+        numerator = -numerator;
+        denominator = -denominator;
+    }
+    (numerator, denominator)
+}
+
 #[test]
-fn endpoint_and_proper_event_parameters_match_integer_oracle() {
+fn all_event_parameters_match_integer_oracle() {
     let points: Vec<P> = (-1..=1)
         .flat_map(|x| (-1..=1).map(move |y| (x, y)))
         .collect();
@@ -124,16 +137,9 @@ fn endpoint_and_proper_event_parameters_match_integer_oracle() {
                         witness.point(),
                         Point2::try_new(p.0 as f64, p.1 as f64).unwrap()
                     );
-                    let (mut numerator, mut denominator) = if a.0 != b.0 {
-                        (p.0 - a.0, b.0 - a.0)
-                    } else {
-                        (p.1 - a.1, b.1 - a.1)
-                    };
-                    if denominator < 0 {
-                        numerator = -numerator;
-                        denominator = -denominator;
-                    }
+                    let (numerator, denominator) = input_parameter(a, b, p);
                     events.push((witness.parameter(), numerator, denominator));
+                    assert!(overlap_witness(first, second).is_none());
                 }
                 SegmentIntersection::Point(SegmentPointEvent::ProperCrossing) => {
                     let (r, s, q) = (sub(b, a), sub(d, c), sub(c, a));
@@ -148,8 +154,38 @@ fn endpoint_and_proper_event_parameters_match_integer_oracle() {
                         denominator,
                     ));
                     assert!(endpoint_touch_witness(first, second).is_none());
+                    assert!(overlap_witness(first, second).is_none());
                 }
-                _ => assert!(endpoint_touch_witness(first, second).is_none()),
+                SegmentIntersection::Overlap => {
+                    let mut endpoints: Vec<_> = [a, b, c, d]
+                        .into_iter()
+                        .filter(|&p| on_segment(a, b, p) && on_segment(c, d, p))
+                        .map(|p| {
+                            let (n, d) = input_parameter(a, b, p);
+                            (p, n, d)
+                        })
+                        .collect();
+                    endpoints.sort_by(|l, r| (l.1 * r.2).cmp(&(r.1 * l.2)));
+                    let (p0, n0, d0) = endpoints.first().copied().unwrap();
+                    let (p1, n1, d1) = endpoints.last().copied().unwrap();
+                    assert!(n0 * d1 < n1 * d0);
+                    let witness = overlap_witness(first, second).unwrap();
+                    assert_eq!(
+                        witness.start_point(),
+                        Point2::try_new(p0.0 as f64, p0.1 as f64).unwrap()
+                    );
+                    assert_eq!(
+                        witness.end_point(),
+                        Point2::try_new(p1.0 as f64, p1.1 as f64).unwrap()
+                    );
+                    events.push((witness.start_parameter(), n0, d0));
+                    events.push((witness.end_parameter(), n1, d1));
+                    assert!(endpoint_touch_witness(first, second).is_none());
+                }
+                SegmentIntersection::Disjoint => {
+                    assert!(endpoint_touch_witness(first, second).is_none());
+                    assert!(overlap_witness(first, second).is_none());
+                }
             }
         }
         for (left, ln, ld) in &events {

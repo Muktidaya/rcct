@@ -458,13 +458,104 @@ pub fn endpoint_touch_witness(first: Segment2, second: Segment2) -> Option<Endpo
     }
     let point = [first.start, first.end, second.start, second.end]
         .into_iter()
-        .find(|&p| {
-            orient2d(first.start, first.end, p) == Orientation2::Collinear
-                && on_segment(first.start, first.end, p)
-                && orient2d(second.start, second.end, p) == Orientation2::Collinear
-                && on_segment(second.start, second.end, p)
-        })
+        .find(|&p| point_on_both(first, second, p))
         .expect("a single-point boundary touch has a source endpoint");
+    Some(EndpointTouch2 {
+        second,
+        point,
+        parameter: parameter_for_input_point(first, point),
+    })
+}
+
+/// A positive-length collinear overlap with endpoints ordered on the first segment.
+///
+/// Both endpoint points are original finite binary64 input endpoints. Their
+/// exact parameters can be compared with other supported events on the same
+/// directed first segment. Reversing that segment reverses the returned order.
+#[derive(Clone, Copy)]
+pub struct SegmentOverlap2 {
+    second: Segment2,
+    start: Point2,
+    end: Point2,
+    start_parameter: SegmentParameter2,
+    end_parameter: SegmentParameter2,
+}
+
+impl SegmentOverlap2 {
+    /// Returns the first directed source segment.
+    pub const fn first_segment(&self) -> Segment2 {
+        self.start_parameter.first
+    }
+    /// Returns the second source segment.
+    pub const fn second_segment(&self) -> Segment2 {
+        self.second
+    }
+    /// Returns the overlap endpoint encountered first along the first segment.
+    pub const fn start_point(&self) -> Point2 {
+        self.start
+    }
+    /// Returns the overlap endpoint encountered last along the first segment.
+    pub const fn end_point(&self) -> Point2 {
+        self.end
+    }
+    /// Returns the exact first-segment parameter of the first overlap endpoint.
+    pub const fn start_parameter(&self) -> SegmentParameter2 {
+        self.start_parameter
+    }
+    /// Returns the exact first-segment parameter of the last overlap endpoint.
+    pub const fn end_parameter(&self) -> SegmentParameter2 {
+        self.end_parameter
+    }
+}
+
+/// Retains both source endpoints and exact parameters of a positive-length overlap.
+///
+/// Returns `None` for disjoint segments and single-point intersections; use
+/// [`intersect_segments`] to distinguish those cases. Zero-length segments are
+/// excluded by [`Segment2`]. No rounded point construction is performed.
+pub fn overlap_witness(first: Segment2, second: Segment2) -> Option<SegmentOverlap2> {
+    if intersect_segments(first, second) != SegmentIntersection::Overlap {
+        return None;
+    }
+    let mut candidates = [first.start, first.end, second.start, second.end]
+        .into_iter()
+        .filter(|&p| point_on_both(first, second, p));
+    let initial = candidates
+        .next()
+        .expect("a positive overlap has input endpoints");
+    let initial_parameter = parameter_for_input_point(first, initial);
+    let (mut start, mut end) = (initial, initial);
+    let (mut start_parameter, mut end_parameter) = (initial_parameter, initial_parameter);
+    for point in candidates {
+        let parameter = parameter_for_input_point(first, point);
+        if parameter.compare_on_first(&start_parameter) == Some(Ordering::Less) {
+            start = point;
+            start_parameter = parameter;
+        }
+        if parameter.compare_on_first(&end_parameter) == Some(Ordering::Greater) {
+            end = point;
+            end_parameter = parameter;
+        }
+    }
+    debug_assert!(start_parameter.compare_on_first(&end_parameter) == Some(Ordering::Less));
+    Some(SegmentOverlap2 {
+        second,
+        start,
+        end,
+        start_parameter,
+        end_parameter,
+    })
+}
+
+fn point_on_both(first: Segment2, second: Segment2, p: Point2) -> bool {
+    orient2d(first.start, first.end, p) == Orientation2::Collinear
+        && on_segment(first.start, first.end, p)
+        && orient2d(second.start, second.end, p) == Orientation2::Collinear
+        && on_segment(second.start, second.end, p)
+}
+
+// The caller establishes that point lies on the nonzero first segment.
+fn parameter_for_input_point(first: Segment2, point: Point2) -> SegmentParameter2 {
     let (a, b, p) = if first.start.x != first.end.x {
         (first.start.x, first.end.x, point.x)
     } else {
@@ -484,15 +575,11 @@ pub fn endpoint_touch_witness(first: Segment2, second: Segment2) -> Option<Endpo
     debug_assert!(numerator.sign() != Ordering::Less);
     debug_assert!(denominator.sign() == Ordering::Greater);
     debug_assert!(numerator.magnitude_cmp(denominator) != Ordering::Greater);
-    Some(EndpointTouch2 {
-        second,
-        point,
-        parameter: SegmentParameter2 {
-            first,
-            numerator,
-            denominator,
-        },
-    })
+    SegmentParameter2 {
+        first,
+        numerator,
+        denominator,
+    }
 }
 
 fn widen_coordinate(value: CoordinateInteger) -> PredicateInteger {

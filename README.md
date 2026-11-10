@@ -61,8 +61,8 @@ order and direct component division.
   exceptional inputs, and normalization limits.
 - [Planar geometry slice](docs/planar.md): exact orientation, segment events,
   and simple closed-wire validation contracts.
-- [Crossing witnesses](docs/crossing-witness.md): exact proper-crossing and
-  endpoint-touch parameters, ordering, capacity assumptions, and limitations.
+- [Segment event witnesses](docs/crossing-witness.md): exact proper-crossing,
+  endpoint-touch and overlap parameters, ordering, capacity assumptions, and limitations.
 - [Verification record](docs/verification.md): independent references,
   acceptance budgets, tagged-source compatibility checks, and exact CI evidence.
 - [Contribution guide](CONTRIBUTING.md): checks and source-provenance requirements.

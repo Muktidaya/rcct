@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 use rcct::planar::{
-    Point2, ProperCrossing2, Segment2, endpoint_touch_witness, proper_crossing_witness,
+    Point2, ProperCrossing2, Segment2, endpoint_touch_witness, overlap_witness,
+    proper_crossing_witness,
 };
 use std::cmp::Ordering;
 
@@ -149,4 +150,47 @@ fn collinear_single_endpoint_contact_preserves_source_point() {
     assert_eq!(touch.first_segment(), first);
     assert_eq!(touch.second_segment(), segment((1.0, -0.0), (2.0, 0.0)));
     assert!(endpoint_touch_witness(first, segment((0.5, 0.0), (2.0, 0.0))).is_none());
+}
+
+#[test]
+fn overlap_boundaries_are_exact_and_follow_first_segment_direction() {
+    let max = f64::MAX;
+    let tiny = f64::from_bits(1);
+    let first = segment((-max, 0.0), (max, 0.0));
+    let second = segment((max, -0.0), (tiny, 0.0));
+    let overlap = overlap_witness(first, second).unwrap();
+    assert_eq!(overlap.first_segment(), first);
+    assert_eq!(overlap.second_segment(), second);
+    assert_eq!(overlap.start_point(), point(tiny, 0.0));
+    assert_eq!(overlap.end_point(), point(max, 0.0));
+    let touch = endpoint_touch_witness(first, segment((tiny, 0.0), (tiny, 1.0))).unwrap();
+    let crossing = proper_crossing_witness(first, segment((0.0, -1.0), (0.0, 1.0))).unwrap();
+    assert_eq!(
+        overlap
+            .start_parameter()
+            .compare_on_first(&touch.parameter()),
+        Some(Ordering::Equal)
+    );
+    assert_eq!(
+        overlap
+            .start_parameter()
+            .compare_on_first(&crossing.parameter()),
+        Some(Ordering::Greater)
+    );
+    assert_eq!(
+        overlap
+            .start_parameter()
+            .compare_on_first(&overlap.end_parameter()),
+        Some(Ordering::Less)
+    );
+    let reverse = overlap_witness(segment((max, 0.0), (-max, 0.0)), second).unwrap();
+    assert_eq!(reverse.start_point(), point(max, 0.0));
+    assert_eq!(reverse.end_point(), point(tiny, 0.0));
+    assert_eq!(
+        overlap
+            .start_parameter()
+            .compare_on_first(&reverse.end_parameter()),
+        None
+    );
+    assert!(overlap_witness(first, segment((max, 0.0), (max, 1.0))).is_none());
 }

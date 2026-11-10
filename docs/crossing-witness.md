@@ -1,7 +1,8 @@
-# Exact proper-crossing witnesses
+# Exact segment event witnesses
 
-This construction covers proper crossings and single-point endpoint touches of
-two nonzero straight segments whose endpoints are finite binary64 values. `proper_crossing_witness`
+This construction covers proper crossings, single-point endpoint touches and
+positive-length collinear overlaps of two nonzero straight segments whose
+endpoints are finite binary64 values. `proper_crossing_witness`
 retains the input segments and the exact parameter `t` on the first directed
 segment. The crossing is defined as `a + t(b-a)` in exact arithmetic; the API
 does not round it to `Point2`.
@@ -19,6 +20,13 @@ computes a first-segment parameter as the exact ratio of coordinate differences
 on an axis where the first segment varies. `SegmentParameter2` compares the
 parameters from both witness types on the same directed source segment. Point
 coordinates retain their original binary64 values; signed zeros compare equal.
+
+`overlap_witness` returns the two boundary points and their exact parameters in
+the direction of the first segment. Both boundaries are selected from the four
+original endpoints: the intersection of two closed collinear finite segments is
+bounded by input endpoints. Reversing the first segment reverses the returned
+boundary order. Equal signed-zero coordinates are geometrically identical; the
+returned zero sign is not an identity guarantee.
 
 ## Representation decision and capacity
 
@@ -43,17 +51,18 @@ differences below `2^2099`, so its products with either kind of parameter also
 fit the 132-limb comparison capacity. These bounds depend on the raw finite
 input contract and the stated integer representation.
 
-Collinear overlaps, zero-length segments, constructed crossing coordinates,
+Zero-length segments, constructed crossing coordinates,
 floating enclosures, ordering across different source segments, rational inputs,
 and repeated constructed cuts are not provided by these APIs. `None` from
 `proper_crossing_witness` means the intersection is not a proper crossing;
 `None` from `endpoint_touch_witness` means it is not a single-point touch.
+`None` from `overlap_witness` means it is not a positive-length overlap.
 Use the existing classifier to distinguish other events. Future work must
 address those cases explicitly before treating the segment milestone as complete.
 
 `tests/crossing_witness.rs` checks equal unreduced fractions, ordering,
 different source segments, endpoint contacts, extreme exponents, and 768 cases
 whose expected order is independently generated with Python `Fraction`.
-`tests/planar_segment_oracle.rs` compares endpoint and crossing parameters on
-the small integer grid against a separate integer parametric oracle. The tests
-are finite evidence rather than a proof or qualification.
+`tests/planar_segment_oracle.rs` compares endpoint, overlap-boundary and
+crossing parameters on the small integer grid against a separate integer
+parametric oracle. The tests are finite evidence rather than a proof or qualification.

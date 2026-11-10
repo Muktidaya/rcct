@@ -2,6 +2,8 @@
 
 ## 0.2.0-alpha.1 (unreleased)
 
+- Retain the two original boundaries of a positive-length collinear overlap
+  and their exact parameters in first-segment traversal order.
 - Retain exact endpoint-touch witnesses and compare their parameters with
   proper crossings on the same directed raw-input segment.
 - Retain exact rational proper-crossing parameters and compare their order on

@@ -189,3 +189,9 @@ exponent range against Python `Fraction` parameters. The probe was temporary;
 its results are not a proof or a bundled test. Endpoint witnesses and their
 ordering alongside proper crossings are covered by the persistent exhaustive
 small-grid integer oracle and an adversarial maximum/subnormal scale case.
+
+Another independent temporary `Fraction` probe checked 2,000 endpoint/proper
+comparisons and 2,000 collinear overlaps with independently scaled axes. It
+checked retained endpoints and order against rational parameters. Persistent
+small-grid tests additionally compare overlap boundaries alongside proper and
+touch events. These are finite tests, not a proof.

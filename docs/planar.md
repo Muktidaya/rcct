@@ -68,7 +68,9 @@ For proper crossings, `proper_crossing_witness` retains an exact rational
 parameter and source segments. `endpoint_touch_witness` retains the original
 endpoint and a parameter, including collinear single-point contact. Both can
 order events on the same directed first segment. See [their contract](crossing-witness.md).
-Overlap witnesses and constructed rational inputs remain outside these APIs.
+`overlap_witness` also retains both original overlap boundaries and their exact
+parameters in first-segment order. Constructed rational inputs remain outside
+these APIs.
 
 ## Simple closed wires
 
