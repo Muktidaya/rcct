@@ -234,3 +234,110 @@ impl Plane3 {
         }
     }
 }
+
+/// Failure to evaluate a checked finite-control quadratic Bézier curve.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CurveEvaluationError3 {
+    /// The parameter was NaN or infinite.
+    NonFiniteParameter,
+    /// The finite parameter was outside the closed interval `[0, 1]`.
+    OutOfRangeParameter,
+    /// A rounded intermediate or result was nonfinite.
+    NonFiniteResult,
+}
+impl fmt::Display for CurveEvaluationError3 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::NonFiniteParameter => f.write_str("curve parameter must be finite"),
+            Self::OutOfRangeParameter => f.write_str("curve parameter must be in [0, 1]"),
+            Self::NonFiniteResult => f.write_str("curve evaluation produced a nonfinite value"),
+        }
+    }
+}
+impl std::error::Error for CurveEvaluationError3 {}
+
+/// A non-rational quadratic Bézier curve with three finite control points.
+///
+/// Equal or collinear controls are allowed. Equality compares the stored
+/// ordered control representation, not geometric equivalence. Frames and units
+/// are caller-owned. This representation provides no intersection or robust
+/// incidence predicate and does not establish topological validity.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct QuadraticBezier3 {
+    controls: [FinitePoint3; 3],
+}
+impl QuadraticBezier3 {
+    /// Creates a curve from three already checked finite control points.
+    pub const fn new(start: FinitePoint3, control: FinitePoint3, end: FinitePoint3) -> Self {
+        Self {
+            controls: [start, control, end],
+        }
+    }
+    /// Returns control points in their stored order.
+    pub const fn controls(self) -> [FinitePoint3; 3] {
+        self.controls
+    }
+    /// Returns the coordinatewise bounds of the controls.
+    ///
+    /// These bounds enclose the exact real quadratic curve on `[0, 1]` by the
+    /// convex-hull property; they need not enclose a rounded evaluation.
+    pub fn control_bounds(self) -> Aabb3 {
+        Aabb3::from_points(self.controls[0], self.controls[1])
+            .union(Aabb3::from_points(self.controls[1], self.controls[2]))
+    }
+    /// Evaluates at a finite parameter in `[0, 1]` by de Casteljau interpolation.
+    ///
+    /// For each coordinate, a blend separately rounds `(1 - t)`, the products
+    /// `(1 - t) * a` and `t * b`, and their sum. It blends the first and middle
+    /// controls, then the middle and last, then blends those results. Each
+    /// intermediate must be finite. At `t == 0` or `t == 1`, returns the stored
+    /// endpoint directly, preserving its signed-zero bits. No clamping occurs.
+    ///
+    /// Rounding, cancellation and underflow may change the result; an error may
+    /// occur even when the exact result is finite. The output is not an exact
+    /// construction or a robust geometric predicate.
+    pub fn try_evaluate(self, parameter: f64) -> Result<FinitePoint3, CurveEvaluationError3> {
+        if !parameter.is_finite() {
+            return Err(CurveEvaluationError3::NonFiniteParameter);
+        }
+        if !(0.0..=1.0).contains(&parameter) {
+            return Err(CurveEvaluationError3::OutOfRangeParameter);
+        }
+        if parameter == 0.0 {
+            return Ok(self.controls[0]);
+        }
+        if parameter == 1.0 {
+            return Ok(self.controls[2]);
+        }
+        let a = blend_point(self.controls[0], self.controls[1], parameter)?;
+        let b = blend_point(self.controls[1], self.controls[2], parameter)?;
+        blend_point(a, b, parameter)
+    }
+}
+
+fn blend_point(
+    a: FinitePoint3,
+    b: FinitePoint3,
+    t: f64,
+) -> Result<FinitePoint3, CurveEvaluationError3> {
+    fn blend(a: f64, b: f64, t: f64) -> Result<f64, CurveEvaluationError3> {
+        let complement = 1.0 - t;
+        let left = complement * a;
+        let right = t * b;
+        if !complement.is_finite() || !left.is_finite() || !right.is_finite() {
+            return Err(CurveEvaluationError3::NonFiniteResult);
+        }
+        let result = left + right;
+        if result.is_finite() {
+            Ok(result)
+        } else {
+            Err(CurveEvaluationError3::NonFiniteResult)
+        }
+    }
+    let (a, b) = (a.0, b.0);
+    Ok(FinitePoint3(Point3::new(
+        blend(a.x, b.x, t)?,
+        blend(a.y, b.y, t)?,
+        blend(a.z, b.z, t)?,
+    )))
+}

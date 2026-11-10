@@ -75,3 +75,5 @@ jobs:
         run: python tools/generate_span_query_fixtures.py --check
       - name: Reproduce Boolean triangle fixture
         run: python tools/generate_boolean_triangle_fixture.py --check
+      - name: Reproduce rounded quadratic Bézier fixtures
+        run: python tools/generate_bezier3_fixtures.py --check

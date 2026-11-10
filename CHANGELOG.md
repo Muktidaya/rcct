@@ -2,6 +2,9 @@
 
 ## 0.2.0-alpha.1 (unreleased)
 
+- Add finite-control quadratic 3D Bézier curves with explicitly rounded,
+  fallible parameter evaluation and comparison-only control bounds.
+
 - Group faces with bridge excursions when each filtered boundary is empty or
   one simple cycle, retaining original half-edge ownership.
 - Add checked finite 3D points, segments, closed bounds, and fallible rounded

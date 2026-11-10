@@ -62,7 +62,7 @@ order and direct component division.
 - [Numerical contract](docs/numerics.md): operation semantics, conditioning,
   exceptional inputs, and normalization limits.
 - [Checked spatial primitives](docs/spatial.md): finite 3D values, closed boxes,
-  and explicitly rounded line and plane evaluations.
+  and explicitly rounded line, plane, and quadratic curve evaluations.
 - [Planar geometry slice](docs/planar.md): exact orientation, segment events,
   and simple closed-wire validation contracts.
 - [Segment event witnesses](docs/crossing-witness.md): exact proper-crossing,
@@ -155,6 +155,7 @@ python3 tools/generate_crossing_point_order.py --check
 python3 tools/generate_constructed_orientation.py --check
 python3 tools/generate_span_query_fixtures.py --check
 python3 tools/generate_boolean_triangle_fixture.py --check
+python3 tools/generate_bezier3_fixtures.py --check
 python3 tools/check_package.py
 ```
 

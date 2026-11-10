@@ -83,3 +83,11 @@ zero inputs. Intermediate-overflow cases are excluded from finite accuracy
 bounds and tested for their documented classifications instead. No global
 geometric tolerance, robust predicate, exhaustive coverage or formal
 verification is implied.
+
+`bezier3.tsv` records finite 3D quadratic Bézier x-coordinate evaluation cases
+as binary64 bit patterns. `tools/generate_bezier3_fixtures.py` computes each
+rounded arithmetic operation independently using Python exact `Fraction`
+values and binary64 conversion, including signed-zero rules; it does not call
+rcct. The corpus covers subnormal, extreme and mixed-sign controls. It is
+finite empirical evidence rather than a universal floating-point error bound.
+Regenerate with the script, or verify it with `--check`.
