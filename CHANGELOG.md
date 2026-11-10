@@ -2,6 +2,8 @@
 
 ## 0.2.0-alpha.1 (unreleased)
 
+- Locate retained exact points on other raw supports, then split and intersect
+  provenance-preserving spans without materializing wider parameter fractions.
 - Intersect pairs of original-support spans and compare retained parameter points
   across supports exactly, including source-tagged overlap boundaries.
 - Intersect retained original-support spans with raw segments using exact

@@ -41,9 +41,9 @@ coordinate that varies on the first support. The two span intervals are ordered
 on that axis in first-support traversal order and clipped as above. A collinear
 point contact retains parameters on both supports; an overlap retains each
 boundary as a parameter tagged with its supplying span. The overlap boundaries
-can originate on different supports. A returned parameter is not automatically
-available on the other support, so an arrangement cannot yet split both sides
-of every overlap from these witnesses alone.
+can originate on different supports. A returned numerical parameter is not
+automatically available on the other support. The located-point path below
+can instead retain that exact point and split the other support.
 
 `SegmentParameter2::compare_point_lexicographically` and `same_point` compare
 points retained on different supports without rounding. They establish point
@@ -61,8 +61,40 @@ bounds apply to retained parameters from raw inputs, including endpoint
 parameters, because the numerator is between zero and the denominator. See
 [segment event witnesses](crossing-witness.md) for the derivation.
 
+## Locating overlap boundaries on another support
+
+`LocatedPoint2` pairs a raw target segment with a retained first-generation
+parameter from any original support. The retained parameter continues to name
+its original support; it is not a numerical parameter on the target. Its point
+is proven to lie on the target by exact orientation and closed coordinate bounds.
+Once located, points compare in target traversal order by their retained exact
+coordinates. The target may be reversed independently of the point's origin.
+
+| Operation | Result and budget |
+| --- | --- |
+| `LocatedPoint2::locate` | Returns a located point or `None` after one completed incidence check; `SpanLocationBudget` charges either result. |
+| `LocatedSpan2::split_at` | Returns two immutable spans at a strictly interior located point; `SpanSplitBudget` charges successful splits. |
+| `LocatedSpan2::intersect_span` | Clips the raw-target event to both spans; `SpanQueryBudget` charges every completed query, including disjoint results. |
+
+For an overlap, take each returned boundary's retained parameter, locate it on
+the other raw target, and split that target's span at the located point. A
+located span can then be intersected again while its endpoints retain their
+original first-generation origins. Provenance is not rewritten and numerator or
+denominator widths do not grow through these transfers. Exhausted budgets return
+before their respective operations and leave inputs and budget unchanged; the
+caller must stage multiple operations to make a larger topology update atomic.
+
+An incidence check includes an exact orientation with the 330-limb determinant
+bound in [bounded constructed predicates](constructed-predicates.md), plus
+fixed-width coordinate comparisons. A location unit counts one completed check;
+it is not a total limb-operation, instruction, memory or wall-time limit. Split
+and query units similarly count operations rather than bounding caller storage.
+`compare_on_target` and span construction do fixed-width work without charging
+these budgets; rejected split attempts are also uncharged. Callers must bound
+their own attempts and storage when those limits matter.
+
 This interface does not accept arbitrary rational segment endpoints or a point
-cutter. It does not implement general second-generation rational intersections,
-overlap-boundary reparameterization, or an arrangement. Exact point comparison
-does not by itself assign or manage shared arrangement identities. The tests are
-finite evidence, not a formal proof.
+cutter. It does not materialize numerical overlap parameters on another target,
+implement general second-generation rational intersections, or build an
+arrangement. Exact point comparison does not by itself assign or manage shared
+arrangement identities. The tests are finite evidence, not a formal proof.

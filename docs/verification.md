@@ -284,6 +284,22 @@ dirty-candidate packaged crate and downstream compatibility checks in both
 profiles passed locally. These finite checks are not a formal proof. Hosted CI
 and visual inspection of rendered documentation were not run.
 
+### Located points and spans
+
+An independent signed-`i128` rational determinant and closed-bounds oracle
+checks 2,400 point-on-support cases, including reversed supports and points
+outside the target. The earlier span-pair corpus is cross-checked against the
+located-span path, with 600 collinear cases reconstructed from reversed origin
+supports before querying. Focused cases exercise overlap cuts on both supports,
+repeated point transfers, budget exhaustion, and maximum/subnormal coordinates.
+The checks and first-generation fixed-width bounds are finite evidence, not a
+formal proof or a qualification of arbitrary rational construction chains.
+
+On Rust 1.99.1, formatting, Clippy with warnings denied, debug/release tests and
+doctests, warnings-denied rustdoc, all eight fixture checks, and dirty-candidate
+packaged-crate/downstream checks in both profiles passed locally. Hosted CI and
+visual inspection of rendered documentation were not run for this increment.
+
 ### Original-support span pairs and point identity
 
 An independent signed-`i128` rational oracle checks 2,400 collinear span pairs

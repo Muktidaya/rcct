@@ -853,9 +853,9 @@ fn compare_span_boundary_axis(
 
 /// A caller-chosen cap on completed span intersection queries.
 ///
-/// One completed query, including a disjoint result, uses one unit. Each query
-/// uses fixed-width raw-input arithmetic, but this is not a wall-time, total
-/// instruction, allocation or caller-storage budget.
+/// One completed query, including a disjoint result, uses one unit. Queries use
+/// fixed-width raw and retained first-generation arithmetic, but this is not a
+/// wall-time, total instruction, allocation or caller-storage budget.
 #[derive(Debug, Eq, PartialEq)]
 pub struct SpanQueryBudget {
     remaining: u64,
@@ -973,7 +973,7 @@ impl SpanSplitBudget {
 /// A rejected span construction or split.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SpanSplitError {
-    /// Parameters refer to different directed input segments.
+    /// Inputs refer to different directed source or target supports.
     DifferentSource,
     /// A span's start is not strictly before its end.
     EmptyOrReversed,
@@ -986,7 +986,7 @@ pub enum SpanSplitError {
 impl fmt::Display for SpanSplitError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::DifferentSource => f.write_str("parameters have different directed sources"),
+            Self::DifferentSource => f.write_str("inputs have different directed supports"),
             Self::EmptyOrReversed => f.write_str("span boundaries must be strictly ordered"),
             Self::NotInterior => f.write_str("split parameter must be strictly inside the span"),
             Self::SplitLimitExceeded => f.write_str("span split budget is exhausted"),
@@ -995,6 +995,430 @@ impl fmt::Display for SpanSplitError {
 }
 
 impl std::error::Error for SpanSplitError {}
+
+/// A budget for exact point-on-support location checks.
+///
+/// One completed check consumes one unit, including an off-support result.
+/// Each check has fixed-width arithmetic. Units are not wall time, total
+/// instructions, allocations, or caller-owned storage.
+#[derive(Debug, Eq, PartialEq)]
+pub struct SpanLocationBudget {
+    remaining: u64,
+}
+
+impl SpanLocationBudget {
+    /// Creates a budget for at most `limit` completed checks.
+    pub const fn new(limit: u64) -> Self {
+        Self { remaining: limit }
+    }
+    /// Returns the remaining check units.
+    pub const fn remaining(&self) -> u64 {
+        self.remaining
+    }
+}
+
+/// A location check could not start within the caller's budget.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SpanLocationError {
+    /// No completed-check units remain.
+    LocationLimitExceeded,
+}
+
+impl fmt::Display for SpanLocationError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::LocationLimitExceeded => f.write_str("span location budget is exhausted"),
+        }
+    }
+}
+impl std::error::Error for SpanLocationError {}
+
+/// A first-generation exact point proven to lie on a raw directed segment.
+///
+/// The point retains its original parameter and source; it does not materialize
+/// a new fraction on `target`. Comparisons on the same target use exact point
+/// coordinates and target traversal, even when provenance supports differ.
+#[derive(Clone, Copy)]
+pub struct LocatedPoint2 {
+    target: Segment2,
+    point: SegmentParameter2,
+}
+
+impl LocatedPoint2 {
+    /// Tests exact incidence on the closed target and retains the original point.
+    ///
+    /// Returns `Ok(None)` for an off-line or out-of-range point. One completed
+    /// check consumes one budget unit even when it returns `None`. Exhaustion is
+    /// rejected before arithmetic and leaves the budget and inputs unchanged.
+    /// Inputs remain restricted to raw segments and first-generation parameters.
+    pub fn locate(
+        target: Segment2,
+        point: SegmentParameter2,
+        budget: &mut SpanLocationBudget,
+    ) -> Result<Option<Self>, SpanLocationError> {
+        if budget.remaining == 0 {
+            return Err(SpanLocationError::LocationLimitExceeded);
+        }
+        let coordinates = PredicateCoordinates {
+            x: crossing_coordinate_numerator(point.first.start.x, point.first.end.x, &point),
+            y: crossing_coordinate_numerator(point.first.start.y, point.first.end.y, &point),
+            denominator: point.denominator,
+        };
+        let orientation = orient_predicate_coordinates(
+            predicate_coordinates(ExactPredicatePoint2::Input(target.start)),
+            predicate_coordinates(ExactPredicatePoint2::Input(target.end)),
+            coordinates,
+        );
+        let start = parameter_for_input_point(target, target.start);
+        let end = parameter_for_input_point(target, target.end);
+        let use_x = target.start.x != target.end.x;
+        let forward = if use_x {
+            target.start.x < target.end.x
+        } else {
+            target.start.y < target.end.y
+        };
+        let inside = orientation == Orientation2::Collinear
+            && compare_span_boundary_axis(point, start, use_x, forward) != Ordering::Less
+            && compare_span_boundary_axis(point, end, use_x, forward) != Ordering::Greater;
+        budget.remaining -= 1;
+        Ok(inside.then_some(Self { target, point }))
+    }
+    /// Returns the directed raw segment on which incidence was proven.
+    pub const fn target(&self) -> Segment2 {
+        self.target
+    }
+    /// Returns the point's retained parameter on its original provenance source.
+    pub const fn retained_parameter(&self) -> SegmentParameter2 {
+        self.point
+    }
+    /// Orders two located points along their identical directed target.
+    ///
+    /// Returns `None` for different targets, including reversed traversal.
+    pub fn compare_on_target(&self, other: &Self) -> Option<Ordering> {
+        if self.target != other.target {
+            return None;
+        }
+        let use_x = self.target.start.x != self.target.end.x;
+        let forward = if use_x {
+            self.target.start.x < self.target.end.x
+        } else {
+            self.target.start.y < self.target.end.y
+        };
+        Some(compare_span_boundary_axis(
+            self.point,
+            other.point,
+            use_x,
+            forward,
+        ))
+    }
+}
+
+/// A nonempty interval on a raw segment with provenance-preserving endpoints.
+///
+/// Endpoints may originate on different raw supports, but each has been proven
+/// to lie on the target. The type retains first-generation points and does not
+/// create arbitrary rational segments or materialize new parameter fractions.
+#[derive(Clone)]
+pub struct LocatedSpan2 {
+    start: LocatedPoint2,
+    end: LocatedPoint2,
+}
+
+impl LocatedSpan2 {
+    /// Retains an existing source span without repeating incidence checks.
+    pub const fn from_source_span(span: &SegmentSpan2) -> Self {
+        Self {
+            start: LocatedPoint2 {
+                target: span.start.first,
+                point: span.start,
+            },
+            end: LocatedPoint2 {
+                target: span.end.first,
+                point: span.end,
+            },
+        }
+    }
+    /// Retains the entire raw support.
+    pub fn whole(target: Segment2) -> Self {
+        Self::from_source_span(&SegmentSpan2::whole(target))
+    }
+    /// Creates an interval from points already located on one directed target.
+    pub fn try_new(start: LocatedPoint2, end: LocatedPoint2) -> Result<Self, SpanSplitError> {
+        match start.compare_on_target(&end) {
+            None => Err(SpanSplitError::DifferentSource),
+            Some(Ordering::Less) => Ok(Self { start, end }),
+            Some(_) => Err(SpanSplitError::EmptyOrReversed),
+        }
+    }
+    /// Returns the directed raw target support.
+    pub const fn segment(&self) -> Segment2 {
+        self.start.target
+    }
+    /// Returns the first retained endpoint along the target.
+    pub const fn start(&self) -> LocatedPoint2 {
+        self.start
+    }
+    /// Returns the last retained endpoint along the target.
+    pub const fn end(&self) -> LocatedPoint2 {
+        self.end
+    }
+    /// Splits strictly inside the span at a point located on the same target.
+    ///
+    /// A successful split consumes one split unit; errors leave the span, point
+    /// and budget unchanged. Neither returned span constructs a new fraction.
+    pub fn split_at(
+        &self,
+        at: LocatedPoint2,
+        budget: &mut SpanSplitBudget,
+    ) -> Result<(Self, Self), SpanSplitError> {
+        let lower = self
+            .start
+            .compare_on_target(&at)
+            .ok_or(SpanSplitError::DifferentSource)?;
+        let upper = at
+            .compare_on_target(&self.end)
+            .ok_or(SpanSplitError::DifferentSource)?;
+        if lower != Ordering::Less || upper != Ordering::Less {
+            return Err(SpanSplitError::NotInterior);
+        }
+        if budget.remaining == 0 {
+            return Err(SpanSplitError::SplitLimitExceeded);
+        }
+        budget.remaining -= 1;
+        Ok((
+            Self {
+                start: self.start,
+                end: at,
+            },
+            Self {
+                start: at,
+                end: self.end,
+            },
+        ))
+    }
+
+    /// Intersects two spans whose retained endpoints may have different origins.
+    ///
+    /// The raw targets determine the possible event; exact retained coordinates
+    /// clip it to each span. Point events provide a location on each target.
+    /// Overlap boundaries retain their supplying span and original point; use
+    /// [`LocatedPoint2::locate`] to prove incidence on the other target before
+    /// splitting it. Exhaustion is rejected before work; one completed query
+    /// consumes one [`SpanQueryBudget`] unit, including a disjoint result.
+    pub fn intersect_span(
+        &self,
+        other: &Self,
+        budget: &mut SpanQueryBudget,
+    ) -> Result<LocatedSpanIntersection2, SpanQueryError> {
+        if budget.remaining == 0 {
+            return Err(SpanQueryError::QueryLimitExceeded);
+        }
+        let a = self.segment();
+        let b = other.segment();
+        let result = match intersect_segments(a, b) {
+            SegmentIntersection::Disjoint => LocatedSpanIntersection2::disjoint(),
+            SegmentIntersection::Point(kind) => {
+                let (pa, pb) = match kind {
+                    SegmentPointEvent::ProperCrossing => (
+                        proper_crossing_witness(a, b)
+                            .expect("proper crossing")
+                            .parameter(),
+                        proper_crossing_witness(b, a)
+                            .expect("proper crossing")
+                            .parameter(),
+                    ),
+                    SegmentPointEvent::BoundaryTouch => (
+                        endpoint_touch_witness(a, b)
+                            .expect("boundary touch")
+                            .parameter(),
+                        endpoint_touch_witness(b, a)
+                            .expect("boundary touch")
+                            .parameter(),
+                    ),
+                };
+                let pa = LocatedPoint2 {
+                    target: a,
+                    point: pa,
+                };
+                let pb = LocatedPoint2 {
+                    target: b,
+                    point: pb,
+                };
+                let (al, au) = located_bounds(self, pa);
+                let (bl, bu) = located_bounds(other, pb);
+                if al == Ordering::Less
+                    || au == Ordering::Greater
+                    || bl == Ordering::Less
+                    || bu == Ordering::Greater
+                {
+                    LocatedSpanIntersection2::disjoint()
+                } else {
+                    let proper = kind == SegmentPointEvent::ProperCrossing
+                        && al == Ordering::Greater
+                        && au == Ordering::Less
+                        && bl == Ordering::Greater
+                        && bu == Ordering::Less;
+                    LocatedSpanIntersection2::point(
+                        if proper {
+                            SpanIntersectionKind2::ProperCrossing
+                        } else {
+                            SpanIntersectionKind2::BoundaryTouch
+                        },
+                        pa,
+                        pb,
+                    )
+                }
+            }
+            SegmentIntersection::Overlap => intersect_collinear_located_spans(self, other),
+        };
+        budget.remaining -= 1;
+        Ok(result)
+    }
+}
+
+fn located_bounds(span: &LocatedSpan2, point: LocatedPoint2) -> (Ordering, Ordering) {
+    (
+        point.compare_on_target(&span.start).expect("same target"),
+        point.compare_on_target(&span.end).expect("same target"),
+    )
+}
+
+/// A located overlap boundary with the span that supplied it.
+#[derive(Clone, Copy)]
+pub struct LocatedBoundary2 {
+    source: SpanBoundarySource2,
+    point: LocatedPoint2,
+}
+
+impl LocatedBoundary2 {
+    /// Identifies the supplying input span.
+    pub const fn source(&self) -> SpanBoundarySource2 {
+        self.source
+    }
+    /// Returns the exact retained point and its proven target.
+    pub const fn point(&self) -> LocatedPoint2 {
+        self.point
+    }
+}
+
+/// Exact intersection of two provenance-preserving spans.
+///
+/// Point events have locations on both targets. Overlaps retain two boundaries
+/// in first-target traversal order, each tagged with its supplying input span.
+#[derive(Clone)]
+pub struct LocatedSpanIntersection2 {
+    kind: SpanIntersectionKind2,
+    first: Option<LocatedBoundary2>,
+    last: Option<LocatedBoundary2>,
+    point_on_second: Option<LocatedPoint2>,
+}
+
+impl LocatedSpanIntersection2 {
+    fn disjoint() -> Self {
+        Self {
+            kind: SpanIntersectionKind2::Disjoint,
+            first: None,
+            last: None,
+            point_on_second: None,
+        }
+    }
+    fn point(kind: SpanIntersectionKind2, first: LocatedPoint2, second: LocatedPoint2) -> Self {
+        Self {
+            kind,
+            first: Some(LocatedBoundary2 {
+                source: SpanBoundarySource2::First,
+                point: first,
+            }),
+            last: None,
+            point_on_second: Some(second),
+        }
+    }
+    fn overlap(first: LocatedBoundary2, last: LocatedBoundary2) -> Self {
+        Self {
+            kind: SpanIntersectionKind2::Overlap,
+            first: Some(first),
+            last: Some(last),
+            point_on_second: None,
+        }
+    }
+    /// Returns the intersection class.
+    pub const fn kind(&self) -> SpanIntersectionKind2 {
+        self.kind
+    }
+    /// Returns the point or first overlap boundary, when present.
+    pub const fn first_boundary(&self) -> Option<LocatedBoundary2> {
+        self.first
+    }
+    /// Returns the last overlap boundary, when present.
+    pub const fn last_boundary(&self) -> Option<LocatedBoundary2> {
+        self.last
+    }
+    /// Returns the second-target point for a single-point event, when present.
+    pub const fn point_on_second(&self) -> Option<LocatedPoint2> {
+        self.point_on_second
+    }
+}
+
+fn intersect_collinear_located_spans(
+    first: &LocatedSpan2,
+    second: &LocatedSpan2,
+) -> LocatedSpanIntersection2 {
+    let support = first.segment();
+    let use_x = support.start.x != support.end.x;
+    let axis = |p: Point2| if use_x { p.x } else { p.y };
+    let forward = axis(support.start) < axis(support.end);
+    let first_low = LocatedBoundary2 {
+        source: SpanBoundarySource2::First,
+        point: first.start,
+    };
+    let first_high = LocatedBoundary2 {
+        source: SpanBoundarySource2::First,
+        point: first.end,
+    };
+    let second_forward = (axis(second.segment().start) < axis(second.segment().end)) == forward;
+    let second_low = LocatedBoundary2 {
+        source: SpanBoundarySource2::Second,
+        point: if second_forward {
+            second.start
+        } else {
+            second.end
+        },
+    };
+    let second_high = LocatedBoundary2 {
+        source: SpanBoundarySource2::Second,
+        point: if second_forward {
+            second.end
+        } else {
+            second.start
+        },
+    };
+    let cmp = |a: LocatedBoundary2, b: LocatedBoundary2| {
+        compare_span_boundary_axis(a.point.point, b.point.point, use_x, forward)
+    };
+    let low = if cmp(first_low, second_low) == Ordering::Less {
+        second_low
+    } else {
+        first_low
+    };
+    let high = if cmp(first_high, second_high) == Ordering::Greater {
+        second_high
+    } else {
+        first_high
+    };
+    match cmp(low, high) {
+        Ordering::Greater => LocatedSpanIntersection2::disjoint(),
+        Ordering::Less => LocatedSpanIntersection2::overlap(low, high),
+        Ordering::Equal => {
+            debug_assert!(low.source != high.source);
+            let (a, b) = if low.source == SpanBoundarySource2::First {
+                (low.point, high.point)
+            } else {
+                (high.point, low.point)
+            };
+            LocatedSpanIntersection2::point(SpanIntersectionKind2::BoundaryTouch, a, b)
+        }
+    }
+}
 
 /// A tight, inclusive binary64 enclosure of a supported exact segment parameter.
 ///
@@ -1188,6 +1612,16 @@ pub fn orient_constructed2d(
     let a = predicate_coordinates(a);
     let b = predicate_coordinates(b);
     let c = predicate_coordinates(c);
+    let result = orient_predicate_coordinates(a, b, c);
+    budget.remaining -= cost;
+    Ok(result)
+}
+
+fn orient_predicate_coordinates(
+    a: PredicateCoordinates,
+    b: PredicateCoordinates,
+    c: PredicateCoordinates,
+) -> Orientation2 {
     let dx1 = multiply_construction_predicate(b.x, a.denominator)
         .subtract(multiply_construction_predicate(a.x, b.denominator));
     let dy1 = multiply_construction_predicate(b.y, a.denominator)
@@ -1198,13 +1632,11 @@ pub fn orient_constructed2d(
         .subtract(multiply_construction_predicate(a.y, c.denominator));
     let determinant =
         multiply_comparison_integers(dx1, dy2).subtract(multiply_comparison_integers(dy1, dx2));
-    let result = match determinant.sign() {
+    match determinant.sign() {
         Ordering::Less => Orientation2::Clockwise,
         Ordering::Equal => Orientation2::Collinear,
         Ordering::Greater => Orientation2::Counterclockwise,
-    };
-    budget.remaining -= cost;
-    Ok(result)
+    }
 }
 
 /// A retained finite input point on a nonzero directed input segment.

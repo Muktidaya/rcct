@@ -30,6 +30,8 @@ constructed points into arbitrary segment inputs or perform general rational
 segment intersections. A span can also be intersected with a raw cutter or
 another original-support span under `SpanQueryBudget`; see the
 [span intersection contract](span-intersection.md).
+`LocatedPoint2` adds a budgeted incidence proof for a retained first-generation
+point on another raw support, without creating a new target parameter fraction.
 `SpanSplitBudget` caps successful splits; it does not limit
 rejected calls or caller-owned storage. Splits return two new spans, and any
 error leaves both the source span and budget unchanged. Callers must retain

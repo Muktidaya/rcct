@@ -7,8 +7,9 @@ and produce tight parameter and crossing-coordinate enclosures. These are
 bounded first-generation constructions. `SegmentSpan2` can repeatedly split a
 parameter span on one original raw input segment at retained parameters, and
 intersect that span with a raw cutter or a second original-support span under a
-query budget. The latter can compare and identify overlap boundaries but cannot
-reparameterize every boundary on both supports. It does not accept
+query budget. `LocatedPoint2` can prove a retained boundary lies on another
+raw support; `LocatedSpan2` can split and intersect using that retained point
+without constructing a parameter fraction on the target. It does not accept
 an exact crossing point as an arbitrary segment endpoint or intersect arbitrary
 constructed segments, and an enclosure is not an exact point identity. See
 the [span intersection contract](span-intersection.md).
@@ -22,8 +23,9 @@ coordinate, a boundary represented as `X / D` in binary64 integer units maps to
 `D < 2^4199` and `|B - A| < 2^2099`, so the denominator can need up to 6298
 bits before reduction, beyond the existing 66-limb parameter capacity. A valid
 conversion must account for that width and subsequent operations rather than
-truncate, round, or assume fraction reduction will fit. This is a sizing bound,
-not an implemented conversion or a guarantee for arbitrary construction chains.
+truncate, round, or assume fraction reduction will fit. The located-point path
+avoids numerical reparameterization by retaining the original exact point. It
+does not implement that conversion or cover arbitrary construction chains.
 
 ## Required arithmetic boundary
 
@@ -55,8 +57,8 @@ incidence handling. Construction should operate in a draft and publish only afte
 all required comparisons, splits and structural checks succeed within budget.
 
 No arrangement or general rational intersection API is provided by the current
-crate. Original-support span splitting and intersection queries are narrower
-than general repeated cuts.
+crate. Located spans split and intersect subsets of original raw supports; they
+do not create arbitrary rational lines or second-generation crossing points.
 Required evidence includes independent rational oracles for
 second and later cuts, equivalent unreduced representations, exact equality
 across distinct sources, collinear overlap and coincident events, exponent and

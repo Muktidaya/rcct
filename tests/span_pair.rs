@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 use rcct::planar::{
-    Point2, Segment2, SegmentParameter2, SegmentSpan2, SpanBoundarySource2, SpanIntersectionKind2,
-    SpanQueryBudget, SpanQueryError, point_on_segment_witness, proper_crossing_witness,
+    LocatedPoint2, LocatedSpan2, Point2, Segment2, SegmentParameter2, SegmentSpan2,
+    SpanBoundarySource2, SpanIntersectionKind2, SpanLocationBudget, SpanQueryBudget,
+    SpanQueryError, point_on_segment_witness, proper_crossing_witness,
 };
 use std::cmp::Ordering;
 
@@ -41,6 +42,51 @@ fn parameter(segment: Segment2, n: i64, d: i64, vertical: bool) -> SegmentParame
 }
 fn same(a: SegmentParameter2, b: SegmentParameter2) -> bool {
     a.compare_on_first(&b) == Some(Ordering::Equal)
+}
+
+fn compare_located_and_source_spans(
+    a: &SegmentSpan2,
+    b: &SegmentSpan2,
+    expected: SpanIntersectionKind2,
+) {
+    let mut budget = SpanQueryBudget::new(2);
+    let source = a.intersect_span(b, &mut budget).unwrap();
+    let located = LocatedSpan2::from_source_span(a)
+        .intersect_span(&LocatedSpan2::from_source_span(b), &mut budget)
+        .unwrap();
+    assert_eq!(located.kind(), expected);
+    if expected == SpanIntersectionKind2::Disjoint {
+        assert!(located.first_boundary().is_none());
+        assert!(located.last_boundary().is_none());
+        assert!(located.point_on_second().is_none());
+        return;
+    }
+    let first = source.first_boundary().unwrap();
+    let actual = located.first_boundary().unwrap();
+    assert_eq!(first.source(), actual.source());
+    assert!(
+        first
+            .parameter()
+            .same_point(&actual.point().retained_parameter())
+    );
+    if expected == SpanIntersectionKind2::Overlap {
+        let last = source.last_boundary().unwrap();
+        let actual = located.last_boundary().unwrap();
+        assert_eq!(last.source(), actual.source());
+        assert!(
+            last.parameter()
+                .same_point(&actual.point().retained_parameter())
+        );
+        assert!(located.point_on_second().is_none());
+    } else {
+        assert!(located.last_boundary().is_none());
+        assert!(
+            source
+                .point_on_second()
+                .unwrap()
+                .same_point(&located.point_on_second().unwrap().retained_parameter())
+        );
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -169,6 +215,63 @@ fn collinear_span_pairs_match_independent_rational_oracle() {
             );
         }
         assert_eq!(result.kind(), expected, "case {case}: {ends:?}");
+        compare_located_and_source_spans(&first_span, &second_span, expected);
+        if case % 4 == 0 {
+            // Reconstruct every endpoint on a reversed provenance support, then
+            // locate it back onto its original target before the pair query.
+            let reverse_a = axis_segment(ends[1], ends[0], vertical);
+            let reverse_b = axis_segment(ends[3], ends[2], vertical);
+            let mut location_budget = SpanLocationBudget::new(4);
+            let mut locate_reversed = |segment, reverse, index| {
+                let (n, d) = ratios[index];
+                let p = parameter(reverse, d - n, d, vertical);
+                LocatedPoint2::locate(segment, p, &mut location_budget)
+                    .unwrap()
+                    .unwrap()
+            };
+            let located_a = LocatedSpan2::try_new(
+                locate_reversed(first, reverse_a, a[0]),
+                locate_reversed(first, reverse_a, a[1]),
+            )
+            .unwrap();
+            let located_b = LocatedSpan2::try_new(
+                locate_reversed(second, reverse_b, b[0]),
+                locate_reversed(second, reverse_b, b[1]),
+            )
+            .unwrap();
+            assert_eq!(location_budget.remaining(), 0);
+            let mut query = SpanQueryBudget::new(1);
+            let event = located_a.intersect_span(&located_b, &mut query).unwrap();
+            assert_eq!(event.kind(), expected, "foreign origin case {case}");
+            if expected != SpanIntersectionKind2::Disjoint {
+                assert!(
+                    event
+                        .first_boundary()
+                        .unwrap()
+                        .point()
+                        .retained_parameter()
+                        .same_point(&result.first_boundary().unwrap().parameter())
+                );
+            }
+            if expected == SpanIntersectionKind2::Overlap {
+                assert!(
+                    event
+                        .last_boundary()
+                        .unwrap()
+                        .point()
+                        .retained_parameter()
+                        .same_point(&result.last_boundary().unwrap().parameter())
+                );
+            } else if expected == SpanIntersectionKind2::BoundaryTouch {
+                assert!(
+                    event
+                        .point_on_second()
+                        .unwrap()
+                        .retained_parameter()
+                        .same_point(&result.point_on_second().unwrap())
+                );
+            }
+        }
         assert_eq!(budget.remaining(), 0);
         if expected == SpanIntersectionKind2::Overlap {
             for (boundary, index) in [
@@ -370,6 +473,7 @@ fn transverse_span_pairs_match_independent_rational_oracle() {
                             let mut budget = SpanQueryBudget::new(1);
                             let event = a.intersect_span(&b, &mut budget).unwrap();
                             assert_eq!(event.kind(), expected, "case {cases}");
+                            compare_located_and_source_spans(&a, &b, expected);
                             if expected != SpanIntersectionKind2::Disjoint {
                                 assert!(same(
                                     event.first_boundary().unwrap().parameter(),
