@@ -2,6 +2,9 @@
 
 ## 0.2.0-alpha.1 (unreleased)
 
+- Add bounded graph incidence and vertex-simple combinatorial closed wires;
+  geometric validity, B-rep and solid topology remain future work.
+
 - Classify finite raw points against selected 2D regions with exact boundary
   incidence, half-open ray crossing and a preflight edge-check budget.
 - Analyze connected components and merged graph-edge bridges with an iterative,
