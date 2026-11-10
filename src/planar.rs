@@ -17,9 +17,15 @@ use std::cmp::Ordering;
 use std::fmt;
 
 mod arrangement;
+mod embedding;
 pub use arrangement::{
     Arrangement2, ArrangementEdge2, ArrangementEdgeUse2, ArrangementError2, ArrangementLimits2,
     ArrangementResource2, ArrangementVertex2, build_arrangement2,
+};
+pub use embedding::{
+    ArrangementEmbedding2, EmbeddingError2, EmbeddingLimits2, EmbeddingResource2, HalfEdge2,
+    WalkOrientationError2, WalkOrientationLimits2, WalkOrientationResource2, embed_arrangement2,
+    simple_walk_orientation2,
 };
 
 const COORDINATE_LIMBS: usize = 33;

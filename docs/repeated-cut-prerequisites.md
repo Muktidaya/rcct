@@ -57,9 +57,10 @@ incidence handling. Construction should operate in a draft and publish only afte
 all required comparisons, splits and structural checks succeed within budget.
 
 The current [bounded arrangement graph](planar-arrangement.md) merges exact
-points and coincident raw-segment pieces while retaining source uses. It has no
-faces or half-edges. Located spans split and intersect subsets of original raw
-supports; they do not create arbitrary rational lines or second-generation
+points and coincident raw-segment pieces while retaining source uses. A separate
+[embedding](planar-embedding.md) provides half-edges and simple-walk orientation
+but does not group walks into faces. Located spans split and intersect subsets
+of original raw supports; they do not create arbitrary rational lines or second-generation
 crossing points. No general rational intersection API is provided.
 Required evidence includes independent rational oracles for
 second and later cuts, equivalent unreduced representations, exact equality

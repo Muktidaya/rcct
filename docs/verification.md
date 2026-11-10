@@ -301,6 +301,24 @@ dirty-candidate packaged-crate/downstream checks in both profiles passed
 locally. These finite checks are not a formal proof. At this local record,
 hosted CI and visual inspection of rendered documentation had not been run.
 
+### Half-edge rotation and simple-walk orientation
+
+The arrangement review traced cut ordering, exact vertex identity, coincident
+edge merging, source traversal, private draft failure, and the documented
+distinction between count limits and byte/time guarantees. An independent
+signed-`i128` angular oracle checks radial order and successor relationships
+across 400 generated small graphs. The independent rational graph corpus also
+compares simple-walk orientation against rational signed areas, including a
+triangle with non-dyadic vertices. Focused tests cover nested and disconnected
+components, bridges, exact resource boundaries, and nearly collinear rays and
+triangles at maximum finite and minimum subnormal scales. These tests are
+finite evidence, not a formal proof or independent third-party audit.
+
+On Rust 1.99.1, formatting, Clippy with warnings denied, debug/release tests and
+doctests, warnings-denied rustdoc, all eight fixture checks, and dirty-candidate
+packaged-crate/downstream checks in both profiles passed locally. At this local
+record, hosted CI and visual inspection of rendered documentation had not run.
+
 ### Located points and spans
 
 An independent signed-`i128` rational determinant and closed-bounds oracle

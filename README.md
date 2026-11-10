@@ -73,6 +73,8 @@ order and direct component division.
   clipping, cross-support point location, query budgets and scope.
 - [Planar arrangement graph](docs/planar-arrangement.md): shared vertices,
   coincident edges, source traversal, resource limits and failure semantics.
+- [Planar half-edge embedding](docs/planar-embedding.md): exact radial order,
+  boundary walks, simple-walk orientation and limits.
 - [Arithmetic backend evaluation](docs/arithmetic-backend-evaluation.md):
   preliminary license, dependency and unsafe-code tradeoffs.
 - [Verification record](docs/verification.md): independent references,

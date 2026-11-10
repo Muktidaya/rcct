@@ -2,6 +2,8 @@
 
 ## 0.2.0-alpha.1 (unreleased)
 
+- Build bounded half-edge rotations and boundary walks, and classify the exact
+  orientation of simple walks without assigning faces or accumulating area.
 - Build resource-bounded raw straight-segment arrangement graphs with exact
   shared vertices, merged coincident edges, source uses and atomic failure.
 - Locate retained exact points on other raw supports, then split and intersect

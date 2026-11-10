@@ -64,8 +64,9 @@ provided. Callers must choose limits appropriate to their resources.
 ## Scope
 
 The graph handles overlapping and coincident raw segments by retaining source
-uses. It does not assign faces, half-edges, winding, or region ownership; it
-does not accept isolated point inputs, curves or arbitrary rational segment
-endpoints, and it does not implement Boolean operations. Independent rational
+uses. A separate [half-edge embedding](planar-embedding.md) provides radial
+order and boundary walks. They do not assign faces, winding to regions, or region
+ownership; accept isolated point inputs, curves or arbitrary rational segment
+endpoints; or implement Boolean operations. Independent rational
 graph tests provide finite evidence rather than a formal proof. See
 [repeated-cut prerequisites](repeated-cut-prerequisites.md) for further gates.

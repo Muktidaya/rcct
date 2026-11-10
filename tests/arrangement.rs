@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 use rcct::planar::{
-    ArrangementError2, ArrangementLimits2, ArrangementResource2, Point2, Segment2,
-    build_arrangement2,
+    ArrangementError2, ArrangementLimits2, ArrangementResource2, EmbeddingLimits2, Orientation2,
+    Point2, Segment2, WalkOrientationError2, WalkOrientationLimits2, build_arrangement2,
+    embed_arrangement2, simple_walk_orientation2,
 };
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
@@ -205,7 +206,7 @@ fn limits() -> ArrangementLimits2 {
         max_comparisons: 100_000,
     }
 }
-fn check_case(segments: &[Segment]) {
+fn check_case(segments: &[Segment]) -> usize {
     let (vertices, edges, uses) = oracle(segments);
     let inputs: Vec<_> = segments.iter().copied().map(input).collect();
     let graph = build_arrangement2(&inputs, limits()).unwrap();
@@ -276,6 +277,53 @@ fn check_case(segments: &[Segment]) {
             assert_eq!(pair[0].1, pair[1].0);
         }
     }
+    let embedding = embed_arrangement2(
+        &graph,
+        EmbeddingLimits2 {
+            max_vertices: 64,
+            max_half_edges: 256,
+            max_edge_uses: 128,
+            max_comparisons: 100_000,
+            max_boundary_walks: 256,
+            max_walk_steps: 256,
+        },
+    )
+    .unwrap();
+    let mut orientation_checks = 0;
+    for index in 0..embedding.boundary_walk_count() {
+        let walk = embedding.boundary_walk(index).unwrap();
+        let origins: Vec<_> = walk
+            .iter()
+            .map(|&h| embedding.half_edges()[h].origin())
+            .collect();
+        let simple =
+            walk.len() >= 3 && origins.iter().copied().collect::<BTreeSet<_>>().len() == walk.len();
+        let result = simple_walk_orientation2(
+            &embedding,
+            index,
+            WalkOrientationLimits2 {
+                max_steps: 256,
+                max_comparisons: 100_000,
+            },
+        );
+        if !simple {
+            assert_eq!(result, Err(WalkOrientationError2::NotSimple));
+        } else if walk.len() <= 6 {
+            let mut area = Rat::integer(0);
+            for i in 0..origins.len() {
+                area = area
+                    + translated[origins[i]].cross(translated[origins[(i + 1) % origins.len()]]);
+            }
+            let expected = match area.cmp(&Rat::integer(0)) {
+                Ordering::Less => Orientation2::Clockwise,
+                Ordering::Greater => Orientation2::Counterclockwise,
+                Ordering::Equal => panic!("simple graph polygon has zero signed area"),
+            };
+            assert_eq!(result, Ok(expected));
+            orientation_checks += 1;
+        }
+    }
+    orientation_checks
 }
 
 #[test]
@@ -287,6 +335,7 @@ fn randomized_small_arrangements_match_independent_rational_graph() {
             .wrapping_add(1442695040888963407);
         ((state >> 32) as usize) % n
     };
+    let mut orientation_checks = 0;
     for _case in 0..400 {
         let count = 1 + rand(6);
         let mut segments = Vec::new();
@@ -303,8 +352,12 @@ fn randomized_small_arrangements_match_independent_rational_graph() {
             }
             segments.push((a, b));
         }
-        check_case(&segments);
+        orientation_checks += check_case(&segments);
     }
+    assert!(
+        orientation_checks >= 10,
+        "only {orientation_checks} simple walks were checked"
+    );
 }
 
 #[test]
@@ -317,6 +370,8 @@ fn overlaps_t_junctions_and_shared_rational_crossings() {
         (p(3, 0), p(4, 2)),
         (p(6, 0), p(0, 0)),
     ]);
+    // Three pairwise proper crossings form a triangle with non-dyadic vertices.
+    check_case(&[(p(0, 0), p(2, 0)), (p(0, 1), p(1, -2)), (p(0, -1), p(1, 1))]);
     check_case(&[
         (p(0, 0), p(3, 0)),
         (p(0, 1), p(1, -2)),
