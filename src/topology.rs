@@ -12,6 +12,12 @@
 
 use std::fmt;
 
+mod links;
+pub use links::{
+    VertexLink, VertexLinkError, VertexLinkKind, VertexLinkLimits, VertexLinkResource, VertexLinks,
+    analyze_vertex_links,
+};
+
 /// An edge specified by its ordered, graph-local endpoint indices.
 /// Validation occurs when an incidence graph is constructed.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

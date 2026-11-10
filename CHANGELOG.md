@@ -2,6 +2,9 @@
 
 ## 0.2.0-alpha.1 (unreleased)
 
+- Analyze bounded vertex-link multigraphs of wire occurrences without claiming
+  geometric or manifold validity.
+
 - Count directed edge-use incidence across bounded wire collections, preserving
   graph identity and explicitly leaving shell validity unestablished.
 

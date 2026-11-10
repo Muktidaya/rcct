@@ -67,3 +67,39 @@ and the checked total use count are preflighted before allocating the edge-sized
 report and tallying uses. Reservation is fallible; inputs are immutable and no
 partial report is returned. The caps bound logical items rather than allocator
 latency or all instructions.
+
+## Vertex-link diagnostics
+
+`analyze_vertex_links` considers each graph-edge end used at a vertex as a
+link node. At a wire corner it adds a link edge from the incoming use's
+endpoint to the outgoing use's endpoint:
+
+```text
+       incoming graph edge       outgoing graph edge
+              -----> vertex ----->
+                         |
+             link node --+-- link node
+                        corner
+```
+
+Every wire occurrence contributes independently. Parallel graph edges remain
+separate nodes, and duplicate corners produce parallel link edges; two nodes
+joined by two link edges form a multigraph cycle. Unused graph-edge ends are
+inactive. For each vertex the report gives active ends, corner occurrences,
+connected components, and counts of nodes with degree one, degree two, and
+other degrees. It classifies the active link as isolated, a single path, a
+single cycle, or other (including branching or disconnected links).
+
+These are facts about the supplied combinatorial occurrences. They do not prove
+surface geometry, manifoldness, connectedness of the whole collection, shell
+validity, or solid orientation. For example, duplicating a wire can create link
+cycles without constructing a geometric surface. Future B-rep work needs an
+explicit model for faces, holes, curves, surface trims and vertex neighborhoods.
+
+The analysis requires every wire to borrow the same graph object. It caps graph
+vertices, twice the graph-edge count, wire occurrences, total uses, and the
+number of union-find parent pointers followed. Checked arithmetic and fallible
+allocation precede publication; errors leave input untouched and return no
+partial report. Runtime is bounded by logical vertices, edge ends, uses and the
+charged parent traversals; caps do not promise allocator latency or total
+process memory availability.
