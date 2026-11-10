@@ -10,7 +10,7 @@ stubs.
 
 Run formatting, Clippy with warnings denied, tests (including doctests), a
 warnings-denied documentation build, deterministic fixture regeneration, and
-`python3 tools/check_package.py` before a release. Validate both fixture
+`python3 tools/check_package.py` before a release. Validate all fixture
 generators with `--check`. Run tests in both debug and
 release profiles. The unreleased v0.2.0 candidate pins Rust 1.99.1 as its minimum
 and development toolchain; also check the rolling stable toolchain as CI does.

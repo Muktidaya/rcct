@@ -171,3 +171,14 @@ integer parametric oracle now covers the 5,184 directed segment pairs in
 `tests/planar_segment_oracle.rs`. Closed finite planar bounds are covered by
 `tests/planar_bounds.rs`, including degenerate boxes, contact, signed zero,
 extremes, and small-grid union/intersection laws.
+
+### Proper-crossing parameter order
+
+The bounded witness retains raw source segments and a rational parameter;
+its capacity argument and excluded cases are in `docs/crossing-witness.md`.
+`tests/crossing_witness.rs` compares 512 wide-exponent and 256 general integer
+cases against independently generated Python `Fraction` order fixtures, plus
+equal unreduced fractions, extreme values, differing source segments and
+nonproper cases. On Rust 1.99.1, formatting, Clippy, debug/release tests,
+warnings-denied documentation, all three fixture checks, and the dirty-candidate
+package/downstream check passed locally. No hosted CI or formal proof is claimed.

@@ -61,3 +61,5 @@ jobs:
         run: python tools/generate_numeric_fixtures.py --check
       - name: Reproduce exact orientation fixtures
         run: python tools/generate_orientation_fixtures.py --check
+      - name: Reproduce exact crossing-order fixtures
+        run: python tools/generate_crossing_order_fixtures.py --check

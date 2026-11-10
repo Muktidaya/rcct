@@ -318,6 +318,120 @@ pub fn intersect_segments(first: Segment2, second: Segment2) -> SegmentIntersect
     SegmentIntersection::Disjoint
 }
 
+/// An exact proper-crossing witness for two finite, nonzero input segments.
+///
+/// The witness retains both original segments and the exact rational parameter
+/// on the first directed segment. It is limited to intersections of raw
+/// binary64 endpoints; it is not a general rational point or a rounded location.
+#[derive(Clone, Copy)]
+pub struct ProperCrossing2 {
+    first: Segment2,
+    second: Segment2,
+    numerator: PredicateInteger,
+    denominator: PredicateInteger,
+}
+
+impl ProperCrossing2 {
+    /// Returns the first directed source segment, whose parameter defines order.
+    pub const fn first_segment(&self) -> Segment2 {
+        self.first
+    }
+
+    /// Returns the second source segment.
+    pub const fn second_segment(&self) -> Segment2 {
+        self.second
+    }
+
+    /// Compares exact parameters on the same directed first segment.
+    ///
+    /// Returns `None` when the first segments differ, including reversed traversal.
+    /// Distinct rational representations of the same parameter compare equal.
+    pub fn compare_on_first(&self, other: &Self) -> Option<Ordering> {
+        if self.first != other.first {
+            return None;
+        }
+        let left = multiply_predicate_magnitudes(self.numerator, other.denominator);
+        let right = multiply_predicate_magnitudes(other.numerator, self.denominator);
+        Some(left.iter().rev().cmp(right.iter().rev()))
+    }
+}
+
+/// Retains the exact rational parameter of a proper crossing, if one exists.
+///
+/// This returns `None` for disjoint segments, endpoint touches, and collinear
+/// overlaps. Use [`intersect_segments`] to distinguish those cases. The witness
+/// supports exact ordering on the same directed first segment; it does not
+/// construct a binary64 intersection point or accept previously constructed
+/// rational points as inputs.
+pub fn proper_crossing_witness(first: Segment2, second: Segment2) -> Option<ProperCrossing2> {
+    if intersect_segments(first, second)
+        != SegmentIntersection::Point(SegmentPointEvent::ProperCrossing)
+    {
+        return None;
+    }
+    let numerator = exact_cross(second.start, first.start, second.end, second.start);
+    let denominator = exact_cross(first.end, first.start, second.end, second.start);
+    let (numerator, denominator) = if denominator.negative {
+        (numerator.negate(), denominator.negate())
+    } else {
+        (numerator, denominator)
+    };
+    debug_assert!(numerator.sign() == Ordering::Greater);
+    debug_assert!(denominator.sign() == Ordering::Greater);
+    debug_assert!(numerator.magnitude_cmp(denominator) == Ordering::Less);
+    Some(ProperCrossing2 {
+        first,
+        second,
+        numerator,
+        denominator,
+    })
+}
+
+// Computes (a - b) × (c - d) without rounded coordinate subtraction.
+fn exact_cross(a: Point2, b: Point2, c: Point2, d: Point2) -> PredicateInteger {
+    let x1 =
+        CoordinateInteger::from_finite_f64(a.x).subtract(CoordinateInteger::from_finite_f64(b.x));
+    let y1 =
+        CoordinateInteger::from_finite_f64(a.y).subtract(CoordinateInteger::from_finite_f64(b.y));
+    let x2 =
+        CoordinateInteger::from_finite_f64(c.x).subtract(CoordinateInteger::from_finite_f64(d.x));
+    let y2 =
+        CoordinateInteger::from_finite_f64(c.y).subtract(CoordinateInteger::from_finite_f64(d.y));
+    x1.multiply(y2).subtract(y1.multiply(x2))
+}
+
+// Each raw-input determinant is < 2^4199; multiplying two needs < 8398 bits.
+// 132 limbs supply 8448 bits, including for unnormalized equivalent fractions.
+fn multiply_predicate_magnitudes(left: PredicateInteger, right: PredicateInteger) -> [u64; 132] {
+    let mut product = [0_u64; 132];
+    for i in 0..PREDICATE_LIMBS {
+        if left.limbs[i] == 0 {
+            continue;
+        }
+        let mut carry = 0_u128;
+        for j in 0..PREDICATE_LIMBS {
+            if right.limbs[j] == 0 && carry == 0 {
+                continue;
+            }
+            let index = i + j;
+            let sum = u128::from(left.limbs[i]) * u128::from(right.limbs[j])
+                + u128::from(product[index])
+                + carry;
+            product[index] = sum as u64;
+            carry = sum >> 64;
+        }
+        let mut index = i + PREDICATE_LIMBS;
+        while carry != 0 {
+            debug_assert!(index < product.len());
+            let sum = u128::from(product[index]) + carry;
+            product[index] = sum as u64;
+            carry = sum >> 64;
+            index += 1;
+        }
+    }
+    product
+}
+
 /// A simple closed polygonal wire in the plane.
 ///
 /// Vertices are stored in traversal order. The closing edge from the final

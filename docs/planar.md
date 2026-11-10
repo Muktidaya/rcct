@@ -64,6 +64,11 @@ endpoint identity. Proper crossing coordinates need a separate construction
 and error policy; this API avoids returning a rounded value that callers might
 mistake for an exact witness.
 
+For proper crossings, `proper_crossing_witness` separately retains an exact
+rational parameter and source segments and can order events on the same
+directed first segment. See [its contract](crossing-witness.md). Other event
+classes and constructed rational inputs remain outside that witness API.
+
 ## Simple closed wires
 
 `SimpleWire2::try_new(vertices)` treats the vertices as a traversal-order cycle

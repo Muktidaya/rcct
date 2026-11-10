@@ -2,6 +2,8 @@
 
 ## 0.2.0-alpha.1 (unreleased)
 
+- Retain exact rational proper-crossing parameters and compare their order on
+  the same directed raw-input segment; other intersection classes remain gated.
 - Add checked finite 2D axis-aligned bounds, including closed intersections,
   unions, point containment, and construction from finite points.
 - Compare all 5,184 pairs of directed segments on a small integer grid against
