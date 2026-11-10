@@ -65,3 +65,5 @@ jobs:
         run: python tools/generate_crossing_order_fixtures.py --check
       - name: Reproduce parameter enclosure fixtures
         run: python tools/generate_parameter_enclosures.py --check
+      - name: Reproduce crossing coordinate enclosure fixtures
+        run: python tools/generate_crossing_coordinate_enclosures.py --check

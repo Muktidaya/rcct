@@ -35,6 +35,13 @@ integer comparisons and a bit-pattern search; no floating-point division or
 process-global rounding-mode change is involved. These are parameter bounds,
 not a coordinate enclosure for the constructed crossing.
 
+`ProperCrossing2::point_enclosure` separately returns tight binary64 bounds for
+each exact crossing coordinate, evaluated from the retained rational parameter
+and original endpoints without rounding the parameter first. The resulting
+rectangle contains the crossing but is not its identity or a general rational
+point. Exact zero is returned as positive zero; a negative value between zero
+and the least negative subnormal has negative zero as its upper bound.
+
 ## Representation decision and capacity
 
 Rounding a crossing to binary64 loses identity, as a crossing can be at 1/3.
@@ -66,10 +73,21 @@ also fits: 66 predicate limbs times 33 coordinate limbs need at most 99 limbs.
 The ordered positive binary64 bit patterns between zero and one permit a
 bounded binary search, including subnormal and exact endpoint cases.
 
+For a proper crossing coordinate, let `A` and `B` be the signed integer
+coefficients of the endpoint coordinates at the common scale `2^-1074`, and let
+`n/d` be the retained parameter. The exact coordinate numerator is
+`A*(d-n) + B*n`. Each product has magnitude below `2^6297`, and their sum has
+magnitude below `2^6298`; 99 limbs supply 6336 bits. Comparing the numerator to
+`d*C` for a candidate finite binary64 coefficient `C` needs the same capacity.
+Since `0 < n/d < 1`, the coordinate lies between its finite endpoints. A binary
+search over ordered finite binary64 bit patterns therefore finds tight bounds
+without infinity, rounded interpolation or process-global rounding changes.
+
 Zero-length segments do not produce these parameter witnesses. The separate
 `ClosedSegment2` API classifies point-segment contacts and returns the original
-point without a parameter. Constructed crossing coordinates and their enclosures,
-ordering across different source segments, rational inputs,
+point without a parameter; `point_on_segment_witness` can provide one when the
+source segment is nonzero. Exact constructed crossing coordinates as reusable
+rational inputs, ordering across different source segments, rational inputs,
 and repeated constructed cuts are not provided by these APIs. `None` from
 `proper_crossing_witness` means the intersection is not a proper crossing;
 `None` from `endpoint_touch_witness` means it is not a single-point touch.
@@ -86,3 +104,6 @@ parametric oracle. Parameter bounds are checked against 1,028 independently
 generated Python `Fraction` cases, including general crossings, exact values,
 subnormal boundaries and extreme ratios. The tests are finite evidence rather
 than a proof or qualification.
+Crossing-coordinate bounds are also checked against 512 independent `Fraction`
+cases with independently scaled axes, plus source swap, endpoint reversal,
+subnormal, exact-value and extreme finite cases.

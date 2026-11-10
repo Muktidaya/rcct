@@ -21,6 +21,7 @@ const PREDICATE_LIMBS: usize = 66;
 
 type CoordinateInteger = SignedMagnitude<COORDINATE_LIMBS>;
 type PredicateInteger = SignedMagnitude<PREDICATE_LIMBS>;
+type ConstructionInteger = SignedMagnitude<99>;
 
 /// A finite point in a caller-owned two-dimensional Cartesian frame.
 ///
@@ -409,6 +410,49 @@ impl ParameterEnclosure2 {
     }
 }
 
+/// Tight binary64 bounds for one exact coordinate of a supported crossing.
+///
+/// The bounds are finite and identical or adjacent representable values. An
+/// exact mathematical zero is represented as positive zero at both bounds;
+/// negative zero may occur as the upper bound of a negative subnormal interval.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct CoordinateEnclosure2 {
+    lower: f64,
+    upper: f64,
+}
+
+impl CoordinateEnclosure2 {
+    /// Returns the inclusive lower coordinate bound.
+    pub const fn lower(self) -> f64 {
+        self.lower
+    }
+    /// Returns the inclusive upper coordinate bound.
+    pub const fn upper(self) -> f64 {
+        self.upper
+    }
+}
+
+/// Independent coordinate enclosures containing an exact planar crossing.
+///
+/// The rectangle may contain points other than the crossing; it is not an
+/// exact point identity or a general interval arithmetic representation.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct CrossingEnclosure2 {
+    x: CoordinateEnclosure2,
+    y: CoordinateEnclosure2,
+}
+
+impl CrossingEnclosure2 {
+    /// Returns the x coordinate enclosure.
+    pub const fn x(self) -> CoordinateEnclosure2 {
+        self.x
+    }
+    /// Returns the y coordinate enclosure.
+    pub const fn y(self) -> CoordinateEnclosure2 {
+        self.y
+    }
+}
+
 /// A retained finite input point on a nonzero directed input segment.
 #[derive(Clone, Copy)]
 pub struct PointOnSegment2 {
@@ -471,6 +515,19 @@ impl ProperCrossing2 {
     /// Returns the exact parameter for comparison with other supported events.
     pub const fn parameter(&self) -> SegmentParameter2 {
         self.parameter
+    }
+
+    /// Returns tight coordinate enclosures for the exact crossing.
+    ///
+    /// Each bound is obtained by integer comparison of the retained exact
+    /// construction, without first rounding the parameter or the point. This
+    /// operation applies only to this raw finite-binary64 crossing witness.
+    pub fn point_enclosure(&self) -> CrossingEnclosure2 {
+        let segment = self.parameter.first;
+        CrossingEnclosure2 {
+            x: enclose_crossing_coordinate(segment.start.x, segment.end.x, &self.parameter),
+            y: enclose_crossing_coordinate(segment.start.y, segment.end.y, &self.parameter),
+        }
     }
 
     /// Compares exact parameters on the same directed first segment.
@@ -853,6 +910,63 @@ fn multiply_predicate_coordinate(left: PredicateInteger, right: CoordinateIntege
     product
 }
 
+fn signed_coordinate_product(
+    weight: PredicateInteger,
+    coordinate: CoordinateInteger,
+) -> ConstructionInteger {
+    ConstructionInteger {
+        limbs: multiply_predicate_coordinate(weight, coordinate),
+        negative: coordinate.negative,
+    }
+    .canonical()
+}
+
+// Coordinates are exact integers in units of 2^-1074. The weighted numerator
+// is A*(d-n) + B*n, compared with d*C for each candidate binary64 coordinate C.
+fn enclose_crossing_coordinate(
+    start: f64,
+    end: f64,
+    parameter: &SegmentParameter2,
+) -> CoordinateEnclosure2 {
+    let complement = parameter.denominator.subtract(parameter.numerator);
+    let numerator =
+        signed_coordinate_product(complement, CoordinateInteger::from_finite_f64(start)).add(
+            signed_coordinate_product(parameter.numerator, CoordinateInteger::from_finite_f64(end)),
+        );
+    let compare = |key: u64| {
+        let bits = if key & (1_u64 << 63) == 0 {
+            !key
+        } else {
+            key ^ (1_u64 << 63)
+        };
+        let candidate = CoordinateInteger::from_finite_f64(f64::from_bits(bits));
+        numerator.signed_cmp(signed_coordinate_product(parameter.denominator, candidate))
+    };
+    let (mut low, mut high) = (0x0010_0000_0000_0000_u64, 0xffef_ffff_ffff_ffff_u64);
+    while low < high {
+        let middle = low + (high - low).div_ceil(2);
+        if compare(middle) != Ordering::Less {
+            low = middle;
+        } else {
+            high = middle - 1;
+        }
+    }
+    let value = |key: u64| {
+        f64::from_bits(if key & (1_u64 << 63) == 0 {
+            !key
+        } else {
+            key ^ (1_u64 << 63)
+        })
+    };
+    let lower = value(low);
+    let upper = if compare(low) == Ordering::Equal {
+        lower
+    } else {
+        value(low + 1)
+    };
+    CoordinateEnclosure2 { lower, upper }
+}
+
 /// A simple closed polygonal wire in the plane.
 ///
 /// Vertices are stored in traversal order. The closing edge from the final
@@ -1035,6 +1149,14 @@ impl<const N: usize> SignedMagnitude<N> {
 
     fn magnitude_cmp(self, other: Self) -> Ordering {
         self.limbs.iter().rev().cmp(other.limbs.iter().rev())
+    }
+
+    fn signed_cmp(self, other: Self) -> Ordering {
+        match (self.sign(), other.sign()) {
+            (Ordering::Less, Ordering::Less) => self.magnitude_cmp(other).reverse(),
+            (Ordering::Greater, Ordering::Greater) => self.magnitude_cmp(other),
+            (left, right) => left.cmp(&right),
+        }
     }
 
     fn add_magnitudes(self, other: Self) -> Self {

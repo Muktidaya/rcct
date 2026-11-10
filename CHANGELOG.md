@@ -2,6 +2,8 @@
 
 ## 0.2.0-alpha.1 (unreleased)
 
+- Add tight finite coordinate enclosures for proper crossings without rounding
+  the retained parameter or using process-global rounding modes.
 - Retain exact parameters for finite input points lying on nonzero segments.
 - Classify closed finite segment sets with zero-length point segments, retaining
   an original point for contact without inventing a directed parameter.

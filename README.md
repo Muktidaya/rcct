@@ -127,6 +127,7 @@ python3 tools/generate_numeric_fixtures.py --check
 python3 tools/generate_orientation_fixtures.py --check
 python3 tools/generate_crossing_order_fixtures.py --check
 python3 tools/generate_parameter_enclosures.py --check
+python3 tools/generate_crossing_coordinate_enclosures.py --check
 python3 tools/check_package.py
 ```
 

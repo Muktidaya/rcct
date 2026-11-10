@@ -85,7 +85,8 @@ order events on the same directed first segment. See [their contract](crossing-w
 `overlap_witness` also retains both original overlap boundaries and their exact
 parameters in first-segment order. Constructed rational inputs remain outside
 these APIs. Each retained parameter can provide a tight binary64 enclosure;
-this does not enclose a constructed 2D point.
+proper crossing witnesses can separately provide tight coordinate enclosures
+computed from the exact retained construction.
 
 ## Simple closed wires
 

@@ -221,3 +221,16 @@ parameter; nonzero event witnesses remain separate APIs.
 Rust 1.99.1 formatting, Clippy, debug/release tests, rustdoc, all fixture
 checks, and the dirty-candidate package/downstream check passed locally after
 this change. Hosted CI was not run.
+
+### Retained point contacts and crossing-coordinate bounds
+
+The point-on-segment witness is checked across the independent small-grid point
+oracle and against existing event parameters, including extreme coordinates.
+Proper-crossing coordinate bounds are checked against 512 deterministic Python
+`Fraction` cases with independently scaled axes. Each case is also checked after
+source swap and first-segment reversal. Explicit cases cover a non-dyadic third,
+a minimum-subnormal exact crossing hidden by parameter rounding, negative and
+positive half-subnormal values, and exact zero. These are finite tests, not a
+formal proof. Local Rust 1.99.1 formatting, Clippy, debug/release tests, rustdoc,
+all fixture checks and dirty-candidate package/downstream checks passed. Hosted
+CI was not run.

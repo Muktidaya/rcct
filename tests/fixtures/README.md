@@ -33,6 +33,11 @@ binary64 parameter bounds generated with `tools/generate_parameter_enclosures.py
 using Python `Fraction` and `nextafter`; run that generator with `--check` to
 verify both files.
 
+`crossing_coordinate_enclosures.tsv` records independently generated tight
+coordinate bounds for proper crossings with varied axis scales. Its Python
+`Fraction` generator is `tools/generate_crossing_coordinate_enclosures.py`; use
+`--check` to verify the fixture.
+
 ## Acceptance budgets
 
 These are empirical release test thresholds, not universal API accuracy claims.

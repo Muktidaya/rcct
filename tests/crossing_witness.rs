@@ -292,3 +292,104 @@ fn general_crossing_enclosures_match_independent_fraction_oracle() {
     }
     assert_eq!(count, 256);
 }
+
+#[test]
+fn crossing_coordinates_are_tightly_enclosed_without_rounding_parameter_first() {
+    let third = proper_crossing_witness(
+        segment((0.0, 0.0), (1.0, 1.0)),
+        segment((0.0, 1.0), (1.0, -1.0)),
+    )
+    .unwrap()
+    .point_enclosure();
+    for c in [third.x(), third.y()] {
+        assert_eq!(c.lower().to_bits(), 0x3fd5_5555_5555_5555);
+        assert_eq!(c.upper().to_bits(), 0x3fd5_5555_5555_5556);
+    }
+    let tiny = f64::from_bits(1);
+    let exact_tiny = proper_crossing_witness(
+        segment((-f64::MAX, 0.0), (f64::MAX, 0.0)),
+        segment((tiny, -1.0), (tiny, 1.0)),
+    )
+    .unwrap()
+    .point_enclosure();
+    assert_eq!(exact_tiny.x().lower().to_bits(), 1);
+    assert_eq!(exact_tiny.x().upper().to_bits(), 1);
+    assert_eq!(exact_tiny.y().lower().to_bits(), 0);
+    assert_eq!(exact_tiny.y().upper().to_bits(), 0);
+    let negative_half_subnormal = proper_crossing_witness(
+        segment((0.0, 0.0), (-tiny, 1.0)),
+        segment((-1.0, 0.5), (1.0, 0.5)),
+    )
+    .unwrap()
+    .point_enclosure();
+    assert_eq!(
+        negative_half_subnormal.x().lower().to_bits(),
+        (-tiny).to_bits()
+    );
+    assert_eq!(
+        negative_half_subnormal.x().upper().to_bits(),
+        (-0.0_f64).to_bits()
+    );
+    let positive_half_subnormal = proper_crossing_witness(
+        segment((0.0, 0.0), (tiny, 1.0)),
+        segment((-1.0, 0.5), (1.0, 0.5)),
+    )
+    .unwrap()
+    .point_enclosure();
+    assert_eq!(positive_half_subnormal.x().lower().to_bits(), 0);
+    assert_eq!(positive_half_subnormal.x().upper().to_bits(), 1);
+}
+
+#[test]
+fn crossing_coordinate_enclosures_match_independent_fraction_oracle() {
+    let mut count = 0;
+    for line in include_str!("fixtures/crossing_coordinate_enclosures.tsv")
+        .lines()
+        .filter(|line| !line.starts_with('#'))
+    {
+        let fields: Vec<_> = line.split('\t').collect();
+        assert_eq!(fields.len(), 12);
+        let values: Vec<u64> = fields
+            .iter()
+            .map(|s| u64::from_str_radix(s, 16).unwrap())
+            .collect();
+        let v: Vec<f64> = values[..8].iter().map(|&b| f64::from_bits(b)).collect();
+        let a = segment((v[0], v[1]), (v[2], v[3]));
+        let b = segment((v[4], v[5]), (v[6], v[7]));
+        let enclosure = proper_crossing_witness(a, b).unwrap().point_enclosure();
+        let swapped = proper_crossing_witness(b, a).unwrap().point_enclosure();
+        let reversed = proper_crossing_witness(segment((v[2], v[3]), (v[0], v[1])), b)
+            .unwrap()
+            .point_enclosure();
+        let bit_bounds = |e: rcct::planar::CrossingEnclosure2| {
+            (
+                e.x().lower().to_bits(),
+                e.x().upper().to_bits(),
+                e.y().lower().to_bits(),
+                e.y().upper().to_bits(),
+            )
+        };
+        assert_eq!(
+            bit_bounds(swapped),
+            bit_bounds(enclosure),
+            "swapped case {count}"
+        );
+        assert_eq!(
+            bit_bounds(reversed),
+            bit_bounds(enclosure),
+            "reversed case {count}"
+        );
+        assert_eq!(
+            (
+                enclosure.x().lower().to_bits(),
+                enclosure.x().upper().to_bits(),
+                enclosure.y().lower().to_bits(),
+                enclosure.y().upper().to_bits()
+            ),
+            (values[8], values[9], values[10], values[11]),
+            "case {count}"
+        );
+        count += 1;
+    }
+    assert_eq!(count, 512);
+}
