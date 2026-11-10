@@ -3,8 +3,9 @@ use rcct::planar::{
     Arrangement2, ArrangementLimits2, BooleanOp2, BooleanRegion2, BooleanRegionError2,
     BooleanRegionLimits2, BooleanRegionResource2, EmbeddingLimits2, FaceBuildError2,
     FaceBuildLimits2, FaceWindingLimits2, FillRule2, GroupWindingError2, GroupWindingLimits2,
-    GroupWindingResource2, GroupWindings2, Point2, Segment2, build_arrangement2, build_faces2,
-    embed_arrangement2, face_windings2, group_windings2, select_boolean2,
+    GroupWindingResource2, GroupWindings2, Point2, RegionPointBudget2, RegionPointError2,
+    RegionPointLocation2, Segment2, build_arrangement2, build_faces2, embed_arrangement2,
+    face_windings2, group_windings2, select_boolean2,
 };
 use std::collections::BTreeSet;
 
@@ -535,6 +536,197 @@ fn ignored_open_chord_does_not_appear_in_selected_boundary() {
         .unwrap()
         .edge();
     assert!(!boundary.contains(&(2 * chord)) && !boundary.contains(&(2 * chord + 1)));
+    let mut budget = RegionPointBudget2::new(region.boundary_edge_count());
+    assert_eq!(
+        region.locate_point(Point2::try_new(2., 2.).unwrap(), &mut budget),
+        Ok(RegionPointLocation2::Inside)
+    );
+    assert_eq!(budget.remaining(), 0);
+}
+
+#[test]
+fn region_point_queries_match_independent_rectangle_neighborhoods() {
+    let a = Rect {
+        x0: 0,
+        y0: 0,
+        x1: 4,
+        y1: 4,
+    };
+    let b = Rect {
+        x0: 2,
+        y0: -1,
+        x1: 6,
+        y1: 3,
+    };
+    let mut inputs = a.segments(false);
+    inputs.extend(b.segments(true));
+    let graph = graph(&inputs);
+    let embedding = embed_arrangement2(&graph, embedding_limits()).unwrap();
+    let faces = build_faces2(&embedding, face_limits()).unwrap();
+    let groups = [
+        Some(0),
+        Some(0),
+        Some(0),
+        Some(0),
+        Some(1),
+        Some(1),
+        Some(1),
+        Some(1),
+    ];
+    let winding = group_windings2(&faces, &groups, 2, group_limits()).unwrap();
+    let in8 =
+        |r: Rect, x: i64, y: i64| r.x0 * 8 < x && x < r.x1 * 8 && r.y0 * 8 < y && y < r.y1 * 8;
+    for op in [
+        BooleanOp2::Union,
+        BooleanOp2::Intersection,
+        BooleanOp2::Difference,
+        BooleanOp2::SymmetricDifference,
+    ] {
+        let region = select(&winding, 0, 1, op);
+        let cost = region.boundary_edge_count();
+        let mut budget = RegionPointBudget2::new(usize::MAX);
+        for xq in (-4..=28).step_by(2) {
+            for yq in (-8..=20).step_by(2) {
+                let mut inside = 0;
+                for (dx, dy) in [(-1, -1), (-1, 1), (1, -1), (1, 1)] {
+                    let p = (2 * xq + dx, 2 * yq + dy);
+                    if evaluate(op, in8(a, p.0, p.1), in8(b, p.0, p.1)) {
+                        inside += 1;
+                    }
+                }
+                let expected = match inside {
+                    0 => RegionPointLocation2::Outside,
+                    4 => RegionPointLocation2::Inside,
+                    _ => RegionPointLocation2::Boundary,
+                };
+                let point = Point2::try_new(xq as f64 / 4., yq as f64 / 4.).unwrap();
+                assert_eq!(
+                    region.locate_point(point, &mut budget),
+                    Ok(expected),
+                    "{op:?} point {xq}/4,{yq}/4"
+                );
+            }
+        }
+        let before = budget.remaining();
+        assert_eq!(before, usize::MAX - cost * 255);
+        if cost > 0 {
+            let mut insufficient = RegionPointBudget2::new(cost - 1);
+            assert_eq!(
+                region.locate_point(Point2::try_new(0., 0.).unwrap(), &mut insufficient),
+                Err(RegionPointError2::WorkLimitExceeded)
+            );
+            assert_eq!(insufficient.remaining(), cost - 1);
+            let mut exact = RegionPointBudget2::new(cost);
+            assert!(
+                region
+                    .locate_point(Point2::try_new(0., 0.).unwrap(), &mut exact)
+                    .is_ok()
+            );
+            assert_eq!(exact.remaining(), 0);
+        }
+        assert_eq!(budget.remaining(), before);
+    }
+}
+
+#[test]
+fn region_point_queries_respect_extreme_and_subnormal_boundaries() {
+    let tiny = f64::from_bits(1);
+    for (lo, hi, inside, boundary, outside) in [
+        (0., tiny * 4., (tiny, tiny), (0., tiny), Some((-tiny, tiny))),
+        (-f64::MAX, f64::MAX, (0., 0.), (f64::MAX, 0.), None),
+    ] {
+        let p = |x: f64, y: f64| Point2::try_new(x, y).unwrap();
+        let vertices = [p(lo, lo), p(hi, lo), p(hi, hi), p(lo, hi)];
+        let inputs: Vec<_> = (0..4)
+            .map(|i| Segment2::try_new(vertices[i], vertices[(i + 1) % 4]).unwrap())
+            .collect();
+        let g = graph(&inputs);
+        let e = embed_arrangement2(&g, embedding_limits()).unwrap();
+        let f = build_faces2(&e, face_limits()).unwrap();
+        let groups = [Some(0), Some(0), Some(0), Some(0)];
+        let w = group_windings2(&f, &groups, 2, group_limits()).unwrap();
+        let region = select(&w, 0, 1, BooleanOp2::Union);
+        let mut budget = RegionPointBudget2::new(region.boundary_edge_count() * 3);
+        assert_eq!(
+            region.locate_point(p(inside.0, inside.1), &mut budget),
+            Ok(RegionPointLocation2::Inside)
+        );
+        assert_eq!(
+            region.locate_point(p(boundary.0, boundary.1), &mut budget),
+            Ok(RegionPointLocation2::Boundary)
+        );
+        if let Some((x, y)) = outside {
+            assert_eq!(
+                region.locate_point(p(x, y), &mut budget),
+                Ok(RegionPointLocation2::Outside)
+            );
+        }
+    }
+}
+
+#[test]
+fn region_point_query_handles_non_dyadic_corners_exactly() {
+    let point = |x: f64, y: f64| Point2::try_new(x, y).unwrap();
+    let triangles = [
+        [(0., 0.), (6., 0.), (0., 6.)],
+        [(1., -1.), (7., 3.), (1., 4.)],
+    ];
+    let mut inputs = Vec::new();
+    for triangle in triangles {
+        for i in 0..3 {
+            let (a, b) = (triangle[i], triangle[(i + 1) % 3]);
+            inputs.push(Segment2::try_new(point(a.0, a.1), point(b.0, b.1)).unwrap());
+        }
+    }
+    let graph = graph(&inputs);
+    let embedding = embed_arrangement2(&graph, embedding_limits()).unwrap();
+    let faces = build_faces2(&embedding, face_limits()).unwrap();
+    let groups = [Some(0), Some(0), Some(0), Some(1), Some(1), Some(1)];
+    let winding = group_windings2(&faces, &groups, 2, group_limits()).unwrap();
+    let region = select(&winding, 0, 1, BooleanOp2::Intersection);
+    let mut budget = RegionPointBudget2::new(region.boundary_edge_count() * 8);
+    let r = Rat::new;
+    for (x, y) in [
+        (3., 1.),
+        (3., 3.),
+        (5., 0.),
+        (4.6, 1.4),
+        (3., f64::from_bits((3.0_f64).to_bits() + 1)),
+        (1., 0.),
+        (1., 4.),
+        (2., 0.5),
+    ] {
+        let (xq, yq) = (Rat::from_f64(x), Rat::from_f64(y));
+        let signs = [
+            xq,
+            yq,
+            r(6, 1).sub(xq).sub(yq),
+            r(6, 1)
+                .mul(yq.add(r(1, 1)))
+                .sub(r(4, 1).mul(xq.sub(r(1, 1)))),
+            r(25, 1).sub(xq).sub(r(6, 1).mul(yq)),
+            xq.sub(r(1, 1)),
+        ];
+        let expected = if signs
+            .iter()
+            .any(|v| v.cmp(r(0, 1)) == std::cmp::Ordering::Less)
+        {
+            RegionPointLocation2::Outside
+        } else if signs
+            .iter()
+            .any(|v| v.cmp(r(0, 1)) == std::cmp::Ordering::Equal)
+        {
+            RegionPointLocation2::Boundary
+        } else {
+            RegionPointLocation2::Inside
+        };
+        assert_eq!(
+            region.locate_point(point(x, y), &mut budget),
+            Ok(expected),
+            "point {x:?},{y:?}"
+        );
+    }
+    assert_eq!(budget.remaining(), 0);
 }
 
 #[test]
@@ -767,4 +959,10 @@ fn empty_graph_produces_empty_region_at_exact_limits() {
     .unwrap();
     assert_eq!(region.contains_face(0), Some(false));
     assert_eq!(region.boundary_walk_count(), 0);
+    let mut budget = RegionPointBudget2::new(0);
+    assert_eq!(
+        region.locate_point(Point2::try_new(0., 0.).unwrap(), &mut budget),
+        Ok(RegionPointLocation2::Outside)
+    );
+    assert_eq!(budget.remaining(), 0);
 }

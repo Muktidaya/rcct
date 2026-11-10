@@ -2,6 +2,8 @@
 
 ## 0.2.0-alpha.1 (unreleased)
 
+- Classify finite raw points against selected 2D regions with exact boundary
+  incidence, half-open ray crossing and a preflight edge-check budget.
 - Compute per-group face winding and bounded face-based 2D Boolean boundary
   selections with nonzero and even-odd fill rules.
 - Group simple boundary walks into bounded and unbounded faces and compute

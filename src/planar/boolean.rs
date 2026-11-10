@@ -2,7 +2,11 @@
 
 //! Grouped winding and selected planar boundaries for simple-face arrangements.
 
-use super::PlanarFaces2;
+use super::{
+    CoordinateInteger, Orientation2, PlanarFaces2, Point2, SegmentParameter2,
+    crossing_coordinate_numerator, orient2d, signed_coordinate_product,
+};
+use std::cmp::Ordering;
 use std::fmt;
 
 /// Logical caps for grouped face-winding propagation.
@@ -433,12 +437,162 @@ impl<'f, 'e, 'g> BooleanRegion2<'f, 'e, 'g> {
     pub fn boundary_walk_count(&self) -> usize {
         self.offsets.len() - 1
     }
+    /// Returns the number of selected directed boundary edges.
+    pub fn boundary_edge_count(&self) -> usize {
+        self.boundary.len()
+    }
     /// Returns half-edge indices of one closed oriented boundary walk.
     pub fn boundary_walk(&self, walk: usize) -> Option<&[usize]> {
         let next = walk.checked_add(1)?;
         Some(&self.boundary[*self.offsets.get(walk)?..*self.offsets.get(next)?])
     }
+
+    /// Classifies a finite raw point against this region's selected 2D boundary.
+    ///
+    /// A point on a selected boundary returns `Boundary`; points on discarded
+    /// internal graph edges are classified by the surrounding region. This does
+    /// not restore lower-dimensional Boolean remnants or define whether a
+    /// boundary point is included in a set. The full boundary-edge count is
+    /// reserved before work and charged on every successful query, including an
+    /// early boundary hit. On an error the region, point and budget are unchanged.
+    pub fn locate_point(
+        &self,
+        point: Point2,
+        budget: &mut RegionPointBudget2,
+    ) -> Result<RegionPointLocation2, RegionPointError2> {
+        let charge = self.boundary.len();
+        if charge > budget.remaining {
+            return Err(RegionPointError2::WorkLimitExceeded);
+        }
+        let embedding = self.faces.embedding();
+        let graph = embedding.arrangement();
+        let mut inside = false;
+        let mut on_boundary = false;
+        for &h in &self.boundary {
+            let half = embedding
+                .half_edges()
+                .get(h)
+                .ok_or(RegionPointError2::InvariantViolation)?;
+            let a = graph
+                .vertices()
+                .get(half.origin())
+                .ok_or(RegionPointError2::InvariantViolation)?
+                .point();
+            let b = graph
+                .vertices()
+                .get(half.destination())
+                .ok_or(RegionPointError2::InvariantViolation)?
+                .point();
+            let (support, along) = embedding
+                .directed_support(h)
+                .ok_or(RegionPointError2::InvariantViolation)?;
+            let mut turn = orient2d(support.start(), support.end(), point);
+            if !along {
+                turn = match turn {
+                    Orientation2::Clockwise => Orientation2::Counterclockwise,
+                    Orientation2::Counterclockwise => Orientation2::Clockwise,
+                    Orientation2::Collinear => Orientation2::Collinear,
+                };
+            }
+            if turn == Orientation2::Collinear {
+                let use_x = support.start().x() != support.end().x();
+                let a_order = compare_retained_to_input_axis(a, point, use_x);
+                let b_order = compare_retained_to_input_axis(b, point, use_x);
+                if (a_order != Ordering::Greater && b_order != Ordering::Less)
+                    || (b_order != Ordering::Greater && a_order != Ordering::Less)
+                {
+                    on_boundary = true;
+                    break;
+                }
+            }
+            let ay = compare_retained_to_input_axis(a, point, false);
+            let by = compare_retained_to_input_axis(b, point, false);
+            if (ay != Ordering::Greater
+                && by == Ordering::Greater
+                && turn == Orientation2::Counterclockwise)
+                || (by != Ordering::Greater
+                    && ay == Ordering::Greater
+                    && turn == Orientation2::Clockwise)
+            {
+                inside = !inside;
+            }
+        }
+        budget.remaining -= charge;
+        Ok(if on_boundary {
+            RegionPointLocation2::Boundary
+        } else if inside {
+            RegionPointLocation2::Inside
+        } else {
+            RegionPointLocation2::Outside
+        })
+    }
 }
+
+fn compare_retained_to_input_axis(
+    parameter: SegmentParameter2,
+    point: Point2,
+    use_x: bool,
+) -> Ordering {
+    let segment = parameter.first;
+    let (a, b, value) = if use_x {
+        (segment.start.x, segment.end.x, point.x)
+    } else {
+        (segment.start.y, segment.end.y, point.y)
+    };
+    crossing_coordinate_numerator(a, b, &parameter).signed_cmp(signed_coordinate_product(
+        parameter.denominator,
+        CoordinateInteger::from_finite_f64(value),
+    ))
+}
+
+/// Classification relative to the selected regularized 2D boundary.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum RegionPointLocation2 {
+    /// The point is strictly inside selected two-dimensional material.
+    Inside,
+    /// The point is outside selected material and its boundary.
+    Outside,
+    /// The point lies exactly on a returned boundary edge.
+    Boundary,
+}
+
+/// Budget in maximum boundary-edge checks for region point queries.
+///
+/// A successful query reserves and charges the region's entire boundary-edge
+/// count, even if a boundary is found early. Units are not wall time, total
+/// arithmetic, allocated bytes, or caller storage. Empty boundaries cost zero.
+#[derive(Debug, Eq, PartialEq)]
+pub struct RegionPointBudget2 {
+    remaining: usize,
+}
+impl RegionPointBudget2 {
+    /// Creates a budget with `limit` boundary-edge units.
+    pub const fn new(limit: usize) -> Self {
+        Self { remaining: limit }
+    }
+    /// Returns remaining boundary-edge units.
+    pub const fn remaining(&self) -> usize {
+        self.remaining
+    }
+}
+
+/// A point query failed without consuming its budget.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum RegionPointError2 {
+    /// The budget is smaller than the region's boundary-edge count.
+    WorkLimitExceeded,
+    /// A required stored graph or embedding invariant did not hold.
+    InvariantViolation,
+}
+impl fmt::Display for RegionPointError2 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::WorkLimitExceeded => f.write_str("region point-query budget is exhausted"),
+            Self::InvariantViolation => f.write_str("region point-query invariant failed"),
+        }
+    }
+}
+impl std::error::Error for RegionPointError2 {}
 fn region_reserved<T>(capacity: usize) -> Result<Vec<T>, BooleanRegionError2> {
     let mut result = Vec::new();
     result

@@ -5,7 +5,7 @@ and successful simple-boundary face grouping. It selects two-dimensional faces
 and returns their oriented boundary walks. It is a **regularized face-based 2D
 result**: isolated point or edge contacts are not retained as standalone results.
 For example, two squares sharing only an edge have an empty 2D intersection in
-this representation. It does not define point-on-boundary membership or produce
+this representation. It does not decide point-on-boundary membership or produce
 an independent editable polygon or a 3D solid.
 
 ## Group winding and selection
@@ -31,6 +31,21 @@ Walks can share or revisit vertices; they are not promised to be simple rings.
 The output borrows its face grouping and retains graph half-edge indices, so
 provenance remains available through the original arrangement.
 
+## Point classification
+
+`BooleanRegion2::locate_point` classifies a checked finite raw `Point2` as
+`Inside`, `Outside`, or exactly `Boundary` relative to the selected region.
+`Boundary` is reported separately; callers choose their own boundary-inclusion
+policy. An edge from the underlying graph that was discarded as an internal
+edge is not treated as a selected boundary. An empty region reports `Outside`,
+including at a discarded point-only or edge-only contact.
+
+The query uses exact half-open ray crossings of returned boundary edges. It
+compares raw input coordinates with retained rational edge endpoints and uses
+the original raw support for the orientation sign; floating enclosures are not
+used for incidence. The query accepts raw finite `Point2` inputs, not arbitrary
+rational points.
+
 ## Resource and failure contract
 
 `GroupWindingLimits2` caps source assignments, groups, faces, half-edges,
@@ -45,6 +60,12 @@ logical items, not exact bytes, all arithmetic, allocator behavior or wall time.
 Allocations use fallible reservations; process or allocator aborts are outside
 recoverable-error guarantees. Errors return no partial result and do not mutate
 their inputs.
+
+`RegionPointBudget2` counts maximum boundary-edge checks. Each successful query
+reserves and charges the full boundary-edge count, even on an early boundary
+hit; an empty boundary costs zero. An insufficient budget is rejected before
+arithmetic without changing the budget or input. `boundary_edge_count` exposes
+the fixed charge. This is not an instruction, memory, or wall-time bound.
 
 ## Scope
 

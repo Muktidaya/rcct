@@ -78,7 +78,7 @@ order and direct component division.
 - [Planar faces and winding](docs/planar-faces.md): simple-walk face grouping,
   exact hole containment, aggregate winding and unsupported topology.
 - [Planar Boolean regions](docs/planar-boolean.md): per-group winding and
-  face-based 2D selection, boundaries, limits and lower-dimensional exclusions.
+  face-based 2D selection, exact raw-point classification, limits and exclusions.
 - [Arithmetic backend evaluation](docs/arithmetic-backend-evaluation.md):
   preliminary license, dependency and unsafe-code tradeoffs.
 - [Verification record](docs/verification.md): independent references,
