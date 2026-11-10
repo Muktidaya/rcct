@@ -69,6 +69,108 @@ impl fmt::Display for Point2Error {
 
 impl std::error::Error for Point2Error {}
 
+/// A closed axis-aligned box with finite coordinates in a caller-owned frame.
+///
+/// The lower and upper coordinates may coincide on either axis. All operations
+/// use comparisons and select existing coordinates; no rounded arithmetic,
+/// tolerance, transformation, or implicit enlargement is performed.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Aabb2 {
+    min: Point2,
+    max: Point2,
+}
+
+impl Aabb2 {
+    /// Creates a closed box, rejecting a lower coordinate above its upper coordinate.
+    pub fn try_new(min: Point2, max: Point2) -> Result<Self, Aabb2Error> {
+        if min.x > max.x || min.y > max.y {
+            return Err(Aabb2Error::InvertedBounds);
+        }
+        Ok(Self { min, max })
+    }
+
+    /// Returns the smallest closed box containing the points, or `None` for no points.
+    pub fn from_points(points: impl IntoIterator<Item = Point2>) -> Option<Self> {
+        let mut points = points.into_iter();
+        let first = points.next()?;
+        let mut result = Self {
+            min: first,
+            max: first,
+        };
+        for point in points {
+            result.min.x = result.min.x.min(point.x);
+            result.min.y = result.min.y.min(point.y);
+            result.max.x = result.max.x.max(point.x);
+            result.max.y = result.max.y.max(point.y);
+        }
+        Some(result)
+    }
+
+    /// Returns the lower corner.
+    pub const fn min(self) -> Point2 {
+        self.min
+    }
+
+    /// Returns the upper corner.
+    pub const fn max(self) -> Point2 {
+        self.max
+    }
+
+    /// Returns whether the point lies inside or on the boundary.
+    pub fn contains(self, point: Point2) -> bool {
+        point.x >= self.min.x
+            && point.x <= self.max.x
+            && point.y >= self.min.y
+            && point.y <= self.max.y
+    }
+
+    /// Returns the smallest closed box containing both boxes.
+    pub fn union(self, other: Self) -> Self {
+        Self {
+            min: Point2 {
+                x: self.min.x.min(other.min.x),
+                y: self.min.y.min(other.min.y),
+            },
+            max: Point2 {
+                x: self.max.x.max(other.max.x),
+                y: self.max.y.max(other.max.y),
+            },
+        }
+    }
+
+    /// Returns the shared closed box, including point or line contact, if any.
+    pub fn intersection(self, other: Self) -> Option<Self> {
+        let min = Point2 {
+            x: self.min.x.max(other.min.x),
+            y: self.min.y.max(other.min.y),
+        };
+        let max = Point2 {
+            x: self.max.x.min(other.max.x),
+            y: self.max.y.min(other.max.y),
+        };
+        Self::try_new(min, max).ok()
+    }
+}
+
+/// A failure while constructing an [`Aabb2`].
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Aabb2Error {
+    /// A lower coordinate is greater than the corresponding upper coordinate.
+    InvertedBounds,
+}
+
+impl fmt::Display for Aabb2Error {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvertedBounds => {
+                formatter.write_str("lower bounds must not exceed upper bounds")
+            }
+        }
+    }
+}
+
+impl std::error::Error for Aabb2Error {}
+
 /// A nonzero straight segment with finite endpoints.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Segment2 {

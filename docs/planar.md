@@ -17,6 +17,12 @@ Equality is exact `f64` equality. Thus `+0.0` and `-0.0` compare equal, while
 nearby representable values remain distinct. This is identity of stored
 coordinates, not an assertion about physical measurement accuracy.
 
+`Aabb2` stores ordered finite lower and upper corners. It permits point and
+line boxes, treats its boundary as included, and can form unions, intersections,
+or the smallest box containing a nonempty collection of `Point2` values.
+These operations select existing coordinates without arithmetic. They do not
+claim conservative bounds for transformed or curved geometry.
+
 ## Exact orientation
 
 `orient2d(a, b, c)` returns the sign of

@@ -159,3 +159,15 @@ maximum finite, subnormal, and overflowing-subtraction examples. Segment and
 wire tests exercise the event and validation classes documented in
 `docs/planar.md`. This evidence is finite and is not a proof, fuzzing result, or
 CAD-kernel qualification.
+
+### Independent planar review and bounds
+
+An additional local review compared 5,184 directed small-grid segment pairs,
+3,000 randomized integer segment pairs, and 5,000 wide-exponent orientation
+triples against a separate Python rational-arithmetic probe. A further 10,000
+near-collinear wide-scale orientation triples matched that oracle. The probe was
+an independent local experiment, not a bundled test or a proof. A persistent
+integer parametric oracle now covers the 5,184 directed segment pairs in
+`tests/planar_segment_oracle.rs`. Closed finite planar bounds are covered by
+`tests/planar_bounds.rs`, including degenerate boxes, contact, signed zero,
+extremes, and small-grid union/intersection laws.

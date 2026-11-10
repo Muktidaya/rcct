@@ -47,6 +47,7 @@ Choose the type by what the value represents:
 | `Vector3` | A displacement with magnitude | Retain it for translation; its components are unchecked `f64` values. |
 | `UnitDirection3` | A checked direction with magnitude discarded | Construction rejects zero/nonfinite vectors; its components are dimensionless. |
 | `Point2` | A checked finite planar location | Construct with `Point2::try_new`; nonfinite coordinates are rejected. |
+| `Aabb2` | Closed finite axis-aligned planar bounds | Degenerate boxes and boundary contact are allowed. |
 | `Segment2` | A checked nonzero finite segment | Construction rejects equal endpoints. |
 | `SimpleWire2` | A validated simple closed polygonal wire | Ordered vertices define an implicit closing edge. |
 

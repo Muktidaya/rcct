@@ -2,6 +2,10 @@
 
 ## 0.2.0-alpha.1 (unreleased)
 
+- Add checked finite 2D axis-aligned bounds, including closed intersections,
+  unions, point containment, and construction from finite points.
+- Compare all 5,184 pairs of directed segments on a small integer grid against
+  an independent integer parametric intersection oracle.
 - Begin the 0.2.0 line with checked finite planar points and segments, exact
   orientation predicates, segment-intersection event classification, and
   simple closed-wire validation. General B-rep and Boolean operations remain
