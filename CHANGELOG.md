@@ -2,6 +2,9 @@
 
 ## 0.2.0-alpha.1 (unreleased)
 
+- Count directed edge-use incidence across bounded wire collections, preserving
+  graph identity and explicitly leaving shell validity unestablished.
+
 - Add bounded graph incidence and vertex-simple combinatorial closed wires;
   geometric validity, B-rep and solid topology remain future work.
 

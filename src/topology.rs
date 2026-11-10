@@ -305,6 +305,186 @@ impl<'g> SimpleClosedWire<'g> {
     }
 }
 
+/// Logical caps for collecting graph-edge incidence.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct EdgeIncidenceLimits {
+    /// Maximum graph edge count, including unused edges.
+    pub max_edges: usize,
+    /// Maximum number of supplied wire occurrences.
+    pub max_wires: usize,
+    /// Maximum total edge-use occurrences across the wires.
+    pub max_uses: usize,
+}
+
+/// A limit reached during incidence analysis.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum EdgeIncidenceResource {
+    /// Graph edge count.
+    Edges,
+    /// Number of supplied wire occurrences.
+    Wires,
+    /// Total number of edge-use occurrences.
+    Uses,
+}
+
+/// Failure to produce an incidence report. No partial report is returned.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum EdgeIncidenceError {
+    /// A configured item limit or representable count was exceeded.
+    LimitExceeded(EdgeIncidenceResource),
+    /// The wire borrows a different graph object, even if structurally equal.
+    DifferentGraph {
+        /// Position of the wire occurrence in the input.
+        wire: usize,
+    },
+    /// An internal incidence invariant was violated.
+    InvariantViolation,
+    /// Memory reservation failed.
+    AllocationFailed,
+}
+impl fmt::Display for EdgeIncidenceError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "edge incidence analysis failed: {self:?}")
+    }
+}
+impl std::error::Error for EdgeIncidenceError {}
+
+/// Classification of use counts in the supplied collection only.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum EdgeIncidenceKind {
+    /// No supplied wire uses this edge.
+    Unused,
+    /// Exactly one use, in either direction.
+    SingleUse,
+    /// Exactly two uses, one in each direction.
+    OppositePair,
+    /// Exactly two uses in the same direction.
+    SameDirectionPair,
+    /// More than two uses, regardless of their directions.
+    MoreThanTwoUses,
+}
+
+/// Exact directed use counts for one graph edge in the supplied collection.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct EdgeIncidence {
+    forward: usize,
+    reverse: usize,
+}
+impl EdgeIncidence {
+    /// Number of forward use occurrences.
+    pub const fn forward(self) -> usize {
+        self.forward
+    }
+    /// Number of reverse use occurrences.
+    pub const fn reverse(self) -> usize {
+        self.reverse
+    }
+    /// Classifies the stored counts without adding them.
+    pub const fn kind(self) -> EdgeIncidenceKind {
+        match (self.forward, self.reverse) {
+            (0, 0) => EdgeIncidenceKind::Unused,
+            (0, 1) | (1, 0) => EdgeIncidenceKind::SingleUse,
+            (1, 1) => EdgeIncidenceKind::OppositePair,
+            (0, 2) | (2, 0) => EdgeIncidenceKind::SameDirectionPair,
+            _ => EdgeIncidenceKind::MoreThanTwoUses,
+        }
+    }
+}
+
+/// A report indexed by graph edge ID, including edges with no supplied uses.
+/// The graph is borrowed; the count snapshot does not borrow the wires.
+#[derive(Debug)]
+pub struct EdgeIncidences<'g> {
+    graph: &'g IncidenceGraph,
+    edges: Vec<EdgeIncidence>,
+}
+impl<'g> EdgeIncidences<'g> {
+    /// Returns the graph whose edge IDs index this report.
+    pub const fn graph(&self) -> &'g IncidenceGraph {
+        self.graph
+    }
+    /// Returns the records in graph edge-ID order.
+    pub fn edges(&self) -> &[EdgeIncidence] {
+        &self.edges
+    }
+}
+
+/// Counts directed edge uses across supplied wire occurrences.
+///
+/// Every wire must borrow the identical graph object; structurally equal graph
+/// instances are distinct. Duplicate wire references count as separate
+/// occurrences. Classification describes only this collection and establishes
+/// neither geometric nor shell validity, connectedness, vertex manifoldness,
+/// face interior, or solid orientation. Parallel graph edges remain separate.
+///
+/// Graph edges and wire occurrences are capped first; graph identity and the
+/// checked total number of uses are preflighted before allocation and counting.
+/// Storage is reserved fallibly, and no input is mutated or partial result
+/// returned on error. Limits bound logical items, not allocator time, process
+/// memory availability, or all CPU instructions.
+pub fn analyze_edge_incidence<'g>(
+    graph: &'g IncidenceGraph,
+    wires: &[&SimpleClosedWire<'_>],
+    limits: EdgeIncidenceLimits,
+) -> Result<EdgeIncidences<'g>, EdgeIncidenceError> {
+    if graph.edges.len() > limits.max_edges {
+        return Err(EdgeIncidenceError::LimitExceeded(
+            EdgeIncidenceResource::Edges,
+        ));
+    }
+    if wires.len() > limits.max_wires {
+        return Err(EdgeIncidenceError::LimitExceeded(
+            EdgeIncidenceResource::Wires,
+        ));
+    }
+    let mut total = 0usize;
+    for (index, wire) in wires.iter().enumerate() {
+        if !std::ptr::eq(graph, wire.graph) {
+            return Err(EdgeIncidenceError::DifferentGraph { wire: index });
+        }
+        total = checked_use_total(total, wire.uses.len(), limits.max_uses)?;
+    }
+    let mut edges = Vec::new();
+    edges
+        .try_reserve_exact(graph.edges.len())
+        .map_err(|_| EdgeIncidenceError::AllocationFailed)?;
+    edges.resize(graph.edges.len(), EdgeIncidence::default());
+    for wire in wires {
+        for edge_use in &wire.uses {
+            let count = edges
+                .get_mut(edge_use.edge)
+                .ok_or(EdgeIncidenceError::InvariantViolation)?;
+            let field = match edge_use.direction {
+                Direction::Forward => &mut count.forward,
+                Direction::Reverse => &mut count.reverse,
+            };
+            *field = field
+                .checked_add(1)
+                .ok_or(EdgeIncidenceError::InvariantViolation)?;
+        }
+    }
+    Ok(EdgeIncidences { graph, edges })
+}
+
+fn checked_use_total(
+    total: usize,
+    additional: usize,
+    limit: usize,
+) -> Result<usize, EdgeIncidenceError> {
+    let next = total
+        .checked_add(additional)
+        .ok_or(EdgeIncidenceError::LimitExceeded(
+            EdgeIncidenceResource::Uses,
+        ))?;
+    if next > limit {
+        Err(EdgeIncidenceError::LimitExceeded(
+            EdgeIncidenceResource::Uses,
+        ))
+    } else {
+        Ok(next)
+    }
+}
+
 // The binomial coefficient is preflighted before any quadratic scan.
 fn comparison_count(n: usize) -> Option<usize> {
     let previous = n.checked_sub(1)?;
@@ -318,7 +498,17 @@ fn comparison_count(n: usize) -> Option<usize> {
 
 #[cfg(test)]
 mod tests {
-    use super::comparison_count;
+    use super::{EdgeIncidenceError, EdgeIncidenceResource, checked_use_total, comparison_count};
+    #[test]
+    fn total_use_count_checks_overflow() {
+        assert_eq!(
+            checked_use_total(usize::MAX, 1, usize::MAX),
+            Err(EdgeIncidenceError::LimitExceeded(
+                EdgeIncidenceResource::Uses
+            ))
+        );
+        assert_eq!(checked_use_total(2, 3, 5), Ok(5));
+    }
     #[test]
     fn comparison_count_checks_overflow() {
         assert_eq!(comparison_count(3), Some(3));

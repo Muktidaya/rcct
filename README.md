@@ -62,7 +62,7 @@ order and direct component division.
 - [Numerical contract](docs/numerics.md): operation semantics, conditioning,
   exceptional inputs, and normalization limits.
 - [Combinatorial topology](docs/topology.md): bounded graph incidence and
-  directed vertex-simple wires without geometric validity claims.
+  directed vertex-simple wires and edge-use incidence without geometric validity claims.
 - [Planar geometry slice](docs/planar.md): exact orientation, segment events,
   and simple closed-wire validation contracts.
 - [Segment event witnesses](docs/crossing-witness.md): exact proper-crossing,
