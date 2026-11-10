@@ -67,3 +67,38 @@ and the checked total use count are preflighted before allocating the edge-sized
 report and tallying uses. Reservation is fallible; inputs are immutable and no
 partial report is returned. The caps bound logical items rather than allocator
 latency or all instructions.
+
+## Scoped handles and declared boundary groups
+
+`ScopedSnapshot` borrows an immutable incidence graph and receives a fresh,
+private identity on every successful construction, including when multiple
+snapshots wrap the same graph. The process-local counter never recycles an ID;
+exhaustion and mutex poison return typed failures. Poison disables future
+issuance in that loaded crate instance. Identities are ephemeral and are not
+persistent credentials across processes, fork, restart, or separately loaded
+crate instances. A snapshot cannot be cloned. The graph remains borrowed and
+immutable while its snapshot or a scoped wire uses it.
+
+A snapshot mints distinct typed vertex and edge handles for in-range indices.
+Resolution checks both snapshot identity and range. A handle proves which
+snapshot minted it; supplying a raw index from elsewhere to a minting function
+cannot establish that index's history. Safe callers cannot construct handle
+fields directly. Raw indices exposed by the older graph API and read-only
+combinatorial diagnostics remain graph-local and do not authenticate re-entry.
+
+A `ScopedWire` admits only scoped edge uses from its own snapshot, then applies
+all existing simple closed-wire checks. Its construction preflights uses and
+quadratic comparisons, checks every handle, and reserves temporary and owned
+storage fallibly; peak construction can hold both use buffers. The owned wire
+borrows its snapshot and graph, and failures return no partial value.
+
+`DeclaredFaceBoundaries` holds one designated outer wire and zero or more inner
+wires from the same snapshot. It rejects any shared graph vertex across its
+boundaries, including reused edges or repeated/reversed wires. This is a
+restricted declaration: outer/inner labels do not prove a disk-with-holes patch,
+containment, orientation, planarity, geometric disjointness, a face, a shell or
+a solid. It deliberately excludes some valid contact and singular cases. The
+constructor preflights total boundaries, total uses and the checked sum of all
+cross-boundary pair products; it fallibly reserves references and returns no
+partial group on error. These logical caps do not bound allocator latency or
+whole-process memory availability.
