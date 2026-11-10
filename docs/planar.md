@@ -23,6 +23,8 @@ point/nonzero contacts using exact point equality and closed containment. It
 returns the original point for those contacts without a parameter; a degenerate
 first segment has no directed parameter. For two nonzero segments it reports
 the existing event class, and callers can request the corresponding witness.
+When a nonzero source segment is available, `point_on_segment_witness` retains
+the input point and provides its exact parameter for ordering with other events.
 `SimpleWire2` still rejects zero-length edges.
 
 Equality is exact `f64` equality. Thus `+0.0` and `-0.0` compare equal, while

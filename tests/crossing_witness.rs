@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 use rcct::planar::{
     Point2, ProperCrossing2, Segment2, endpoint_touch_witness, overlap_witness,
-    proper_crossing_witness,
+    point_on_segment_witness, proper_crossing_witness,
 };
 use std::cmp::Ordering;
 
@@ -126,6 +126,14 @@ fn endpoint_parameters_order_against_proper_crossings_at_extreme_scale() {
     let first = segment((-max, 0.0), (max, 0.0));
     let middle = proper_crossing_witness(first, segment((0.0, -1.0), (0.0, 1.0))).unwrap();
     let touch = endpoint_touch_witness(first, segment((tiny, 0.0), (tiny, 1.0))).unwrap();
+    let point_witness = point_on_segment_witness(first, point(tiny, 0.0)).unwrap();
+    assert_eq!(
+        point_witness
+            .parameter()
+            .compare_on_first(&touch.parameter()),
+        Some(Ordering::Equal)
+    );
+    assert!(point_on_segment_witness(first, point(tiny, tiny)).is_none());
     assert_eq!(touch.point(), point(tiny, 0.0));
     let tight = touch.parameter().enclosure();
     assert_eq!(tight.lower(), 0.5);

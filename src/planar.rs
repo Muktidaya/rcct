@@ -409,6 +409,43 @@ impl ParameterEnclosure2 {
     }
 }
 
+/// A retained finite input point on a nonzero directed input segment.
+#[derive(Clone, Copy)]
+pub struct PointOnSegment2 {
+    point: Point2,
+    parameter: SegmentParameter2,
+}
+
+impl PointOnSegment2 {
+    /// Returns the source segment.
+    pub const fn segment(&self) -> Segment2 {
+        self.parameter.first
+    }
+    /// Returns the original input point without construction rounding.
+    pub const fn point(&self) -> Point2 {
+        self.point
+    }
+    /// Returns its exact parameter on the directed source segment.
+    pub const fn parameter(&self) -> SegmentParameter2 {
+        self.parameter
+    }
+}
+
+/// Retains a finite input point and its exact parameter when it lies on a segment.
+///
+/// The returned parameter is orderable with supported event parameters on the
+/// same directed segment. `None` means the exact stored point is not on the
+/// closed segment. A point segment itself has no directed parameter.
+pub fn point_on_segment_witness(segment: Segment2, point: Point2) -> Option<PointOnSegment2> {
+    if !segment.contains(point) {
+        return None;
+    }
+    Some(PointOnSegment2 {
+        point,
+        parameter: parameter_for_input_point(segment, point),
+    })
+}
+
 /// An exact proper-crossing witness for two finite, nonzero input segments.
 ///
 /// The witness retains both original segments and the exact rational parameter

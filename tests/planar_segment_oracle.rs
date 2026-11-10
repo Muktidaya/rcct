@@ -3,7 +3,7 @@
 use rcct::planar::{
     ClosedSegment2, ClosedSegmentIntersection2, Point2, Segment2, SegmentIntersection,
     SegmentPointEvent, endpoint_touch_witness, intersect_closed_segments, intersect_segments,
-    overlap_witness, proper_crossing_witness,
+    overlap_witness, point_on_segment_witness, proper_crossing_witness,
 };
 
 type P = (i64, i64);
@@ -106,11 +106,19 @@ fn point_containment_matches_independent_integer_oracle() {
             }
             let s = segment(a, b);
             for &p in &points {
+                let checked_point = Point2::try_new(p.0 as f64, p.1 as f64).unwrap();
                 assert_eq!(
-                    s.contains(Point2::try_new(p.0 as f64, p.1 as f64).unwrap()),
+                    s.contains(checked_point),
                     on_segment(a, b, p),
                     "{a:?} {b:?} {p:?}"
                 );
+                let witness = point_on_segment_witness(s, checked_point);
+                assert_eq!(witness.is_some(), on_segment(a, b, p));
+                if let Some(witness) = witness {
+                    assert_eq!(witness.point(), checked_point);
+                    assert_eq!(witness.segment(), s);
+                    assert_eq!(witness.parameter().segment(), s);
+                }
             }
         }
     }
