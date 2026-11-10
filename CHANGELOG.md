@@ -2,6 +2,8 @@
 
 ## 0.2.0-alpha.1 (unreleased)
 
+- Group faces with bridge excursions when each filtered boundary is empty or
+  one simple cycle, retaining original half-edge ownership.
 - Classify finite raw points against selected 2D regions with exact boundary
   incidence, half-open ray crossing and a preflight edge-check budget.
 - Analyze connected components and merged graph-edge bridges with an iterative,

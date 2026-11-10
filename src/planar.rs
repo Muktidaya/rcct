@@ -41,8 +41,8 @@ pub use embedding::{
 };
 pub use faces::{
     Face2, FaceBuildError2, FaceBuildLimits2, FaceBuildResource2, FaceWindingError2,
-    FaceWindingLimits2, FaceWindingResource2, FaceWindings2, PlanarFaces2, build_faces2,
-    face_windings2,
+    FaceWindingLimits2, FaceWindingResource2, FaceWindings2, PlanarFaces2,
+    build_faces_with_bridges2, build_faces2, face_windings2,
 };
 
 const COORDINATE_LIMBS: usize = 33;

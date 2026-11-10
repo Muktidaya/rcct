@@ -32,6 +32,31 @@ uses the original raw support. No floating enclosure is used for incidence or
 containment. This relies on the input graph's exact splitting and the simple
 walk requirement; general self-touching boundaries are deliberately unsupported.
 
+## Bridge-aware subset
+
+`build_faces_with_bridges2` is an opt-in alternative that takes an
+`ArrangementEmbedding2` and a `BridgeAnalysis2` borrowing the **same** graph.
+For each original boundary walk, it removes graph-bridge half-edges only for
+classification and containment. The remaining core must be empty or one
+cyclically continuous simple cycle. An empty core represents a tree walk;
+otherwise the core is oriented and grouped using the same exact containment
+rules. Multiple core cycles, point-tangent loops, and other repeated-vertex
+cores remain unsupported and return `UnsupportedNonSimpleBoundary`.
+
+Original walks and half-edge ownership are preserved. Both sides of every
+bridge are checked to have the same face. A bounded face's `outer_walk` may
+therefore include bridge excursions even though its filtered core is
+counterclockwise; `simple_walk_orientation2` can still reject that original
+walk. For an empty-core tree, a representative vertex on another candidate
+boundary is treated as ambiguous rather than silently outside. A bridge analysis
+for a different graph returns `DifferentArrangement`.
+
+The [bridge-analysis limits](planar-bridges.md) apply independently before this
+stage; `FaceBuildLimits2` also caps the original half-edge and walk counts,
+orientation work, and containment queries here. The filtered-edge and ownership
+scratch arrays are bounded by those original counts. The caller must budget both
+stages; neither offers an exact byte or wall-time cap.
+
 ## Aggregate winding
 
 `face_windings2` computes one aggregate integer winding value per grouped face
@@ -74,6 +99,7 @@ partial result and leaves previous objects unchanged. See
 [half-edge embedding](planar-embedding.md) and
 [arrangement graph](planar-arrangement.md) for earlier-stage limits.
 
-Self-touching or bridge boundaries, isolated point inputs, curves, arbitrary
-constructed segments, face editing, and general CAD Boolean operations remain
-unsupported. Independent tests are finite evidence rather than a formal proof.
+General self-touching or multiple-core boundaries, isolated point inputs,
+curves, arbitrary constructed segments, face editing, and general CAD Boolean
+operations remain unsupported. Independent tests are finite evidence rather
+than a formal proof.

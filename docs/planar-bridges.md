@@ -33,8 +33,9 @@ are logical counts, not byte, total-instruction, allocator, or wall-time limits.
 Reservations are fallible; recoverable errors return no partial analysis and do
 not modify the graph. Process or allocator aborts are outside that guarantee.
 
-This is a topology prerequisite, not face grouping. It does not remove bridges,
-assign faces, identify bridges for individual source uses, or make non-simple
-boundary walks acceptable to `build_faces2`. Input geometry remains subject to
+This analysis does not remove bridges, assign faces, or identify bridges for
+individual source uses. `build_faces2` still rejects non-simple walks; the
+separate [bridge-aware face builder](planar-faces.md) accepts a restricted
+one-core-or-empty subset. Input geometry remains subject to
 the [arrangement graph contract](planar-arrangement.md). Independent edge-removal
 oracle tests are finite evidence rather than a formal proof.

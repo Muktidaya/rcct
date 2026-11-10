@@ -434,6 +434,16 @@ pub fn simple_walk_orientation2(
     let walk = embedding
         .boundary_walk(walk)
         .ok_or(WalkOrientationError2::UnknownWalk)?;
+    simple_cycle_orientation2(embedding, walk, limits)
+}
+
+// The caller must establish that the supplied half-edges form a closed,
+// continuous walk before using this helper on anything but a stored walk.
+pub(super) fn simple_cycle_orientation2(
+    embedding: &ArrangementEmbedding2<'_>,
+    walk: &[usize],
+    limits: WalkOrientationLimits2,
+) -> Result<Orientation2, WalkOrientationError2> {
     if walk.len() < 3 {
         return Err(WalkOrientationError2::NotSimple);
     }

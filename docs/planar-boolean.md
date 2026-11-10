@@ -69,9 +69,10 @@ the fixed charge. This is not an instruction, memory, or wall-time bound.
 
 ## Scope
 
-All earlier stages retain their limits. In particular, face grouping rejects
-bridge and other repeated-vertex boundary walks, including point-tangent input
-loops. Collinear overlaps, coincident edges, shared-edge subdivisions, and
+All earlier stages retain their limits. Simple-only face grouping rejects
+bridge walks; an opt-in bridge-aware builder accepts the documented restricted
+subset. Point-tangent and other unsupported repeated-vertex cores remain
+rejected. Collinear overlaps, coincident edges, shared-edge subdivisions, and
 crossings are supported when the resulting face walks satisfy that contract.
 Inputs remain nonzero raw binary64 straight segments. Curves, arbitrary rational
 segment inputs, lower-dimensional Boolean remnants, unbounded complements,

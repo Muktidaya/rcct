@@ -51,7 +51,7 @@ Choose the type by what the value represents:
 | `Segment2` | A checked nonzero finite segment | Construction rejects equal endpoints. |
 | `ClosedSegment2` | A finite segment set that may be a point | Point-segment contacts do not return a parameter. |
 | `SimpleWire2` | A validated simple closed polygonal wire | Ordered vertices define an implicit closing edge. |
-| `Arrangement2` | A bounded graph of raw straight segments | Simple-walk faces and face-based Boolean selections are built separately. |
+| `Arrangement2` | A bounded graph of raw straight segments | Face-based Boolean selection is built separately for documented walk types. |
 
 Frames and units are caller-owned, not encoded in these types. The source-level
 rustdoc includes an executable `end - start` example and explains why floating-
@@ -78,7 +78,7 @@ order and direct component division.
 - [Planar half-edge embedding](docs/planar-embedding.md): exact radial order,
   boundary walks, simple-walk orientation and limits.
 - [Planar faces and winding](docs/planar-faces.md): simple-walk face grouping,
-  exact hole containment, aggregate winding and unsupported topology.
+  a restricted bridge-aware path, exact containment, winding and limits.
 - [Planar Boolean regions](docs/planar-boolean.md): per-group winding and
   face-based 2D selection, exact raw-point classification, limits and exclusions.
 - [Arithmetic backend evaluation](docs/arithmetic-backend-evaluation.md):

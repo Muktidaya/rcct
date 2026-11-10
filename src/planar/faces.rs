@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Face grouping for embeddings whose boundary walks are all simple.
+//! Bounded face grouping for simple walks and selected bridge excursions.
 
+use super::embedding::simple_cycle_orientation2;
 use super::{
-    ArrangementEmbedding2, ExactPredicatePoint2, Orientation2, PredicateCoordinates,
-    SegmentParameter2, WalkOrientationError2, WalkOrientationLimits2, compare_span_boundary_axis,
-    crossing_coordinate_numerator, orient_predicate_coordinates, predicate_coordinates,
-    simple_walk_orientation2,
+    ArrangementEmbedding2, BridgeAnalysis2, ExactPredicatePoint2, Orientation2,
+    PredicateCoordinates, SegmentParameter2, WalkOrientationError2, WalkOrientationLimits2,
+    compare_span_boundary_axis, crossing_coordinate_numerator, orient_predicate_coordinates,
+    predicate_coordinates, simple_walk_orientation2,
 };
 use std::cmp::Ordering;
 use std::fmt;
@@ -53,6 +54,8 @@ pub enum FaceBuildError2 {
         /// Index of the rejected boundary walk.
         walk: usize,
     },
+    /// Bridge analysis and embedding refer to different arrangement objects.
+    DifferentArrangement,
     /// Containment relations did not establish a strictly nested order.
     AmbiguousContainment,
     /// A configured logical limit was reached.
@@ -67,6 +70,9 @@ impl fmt::Display for FaceBuildError2 {
         match self {
             Self::UnsupportedNonSimpleBoundary { walk } => {
                 write!(f, "boundary walk {walk} is not simple")
+            }
+            Self::DifferentArrangement => {
+                f.write_str("bridge analysis refers to a different arrangement")
             }
             Self::AmbiguousContainment => f.write_str("face containment could not be ordered"),
             Self::LimitExceeded(resource) => write!(f, "face build limit exceeded: {resource:?}"),
@@ -83,7 +89,10 @@ pub struct Face2 {
     outer: Option<usize>,
 }
 impl Face2 {
-    /// Returns its counterclockwise outer walk, or `None` for the unbounded face.
+    /// Returns its outer walk, or `None` for the unbounded face.
+    ///
+    /// With bridge-aware grouping the original walk may contain bridge
+    /// excursions; its bridge-filtered core is counterclockwise.
     pub const fn outer_walk(&self) -> Option<usize> {
         self.outer
     }
@@ -91,8 +100,8 @@ impl Face2 {
 
 /// Face ownership of every boundary walk in a borrowed embedding.
 ///
-/// Only embeddings with entirely simple boundary walks are supported. A face
-/// can own multiple clockwise walks from nested disconnected components.
+/// The simple-only and bridge-aware builders have different supported scopes.
+/// A face can own multiple clockwise walks from nested disconnected components.
 pub struct PlanarFaces2<'e, 'g> {
     embedding: &'e ArrangementEmbedding2<'g>,
     faces: Vec<Face2>,
@@ -179,6 +188,18 @@ fn relation(
     walk: usize,
     budget: &mut ContainmentBudget,
 ) -> Result<Relation, FaceBuildError2> {
+    let edges = embedding
+        .boundary_walk(walk)
+        .ok_or(FaceBuildError2::InvariantViolation)?;
+    relation_edges(embedding, point, edges, budget)
+}
+
+fn relation_edges(
+    embedding: &ArrangementEmbedding2<'_>,
+    point: SegmentParameter2,
+    edges: &[usize],
+    budget: &mut ContainmentBudget,
+) -> Result<Relation, FaceBuildError2> {
     budget.query()?;
     let point_coordinates = PredicateCoordinates {
         x: crossing_coordinate_numerator(point.first.start.x, point.first.end.x, &point),
@@ -187,10 +208,7 @@ fn relation(
     };
     let graph = embedding.arrangement();
     let mut inside = false;
-    for &h in embedding
-        .boundary_walk(walk)
-        .ok_or(FaceBuildError2::InvariantViolation)?
-    {
+    for &h in edges {
         budget.edge()?;
         let half = embedding
             .half_edges()
@@ -370,6 +388,248 @@ pub fn build_faces2<'e, 'g>(
             }
         }
         owners[walk] = best.map_or(0, |index| owners[index]);
+    }
+    Ok(PlanarFaces2 {
+        embedding,
+        faces,
+        walk_faces: owners,
+    })
+}
+
+/// Groups boundary walks after removing bridge excursions for containment.
+///
+/// The bridge analysis must borrow the very same arrangement as `embedding`.
+/// Each walk's non-bridge half-edges must form either no cycle or one closed,
+/// continuous simple cycle. Walks with multiple core cycles or other repeated
+/// vertices are rejected. Bridge half-edges remain in the original walks and
+/// both sides are checked to have the same face before publishing the result.
+/// Limits include original half-edges and walks; scratch and containment work
+/// are bounded by the existing logical caps. Recoverable errors return no
+/// partial result and leave the embedding and analysis unchanged.
+pub fn build_faces_with_bridges2<'e, 'g>(
+    embedding: &'e ArrangementEmbedding2<'g>,
+    bridges: &BridgeAnalysis2<'_>,
+    limits: FaceBuildLimits2,
+) -> Result<PlanarFaces2<'e, 'g>, FaceBuildError2> {
+    if !std::ptr::eq(embedding.arrangement(), bridges.arrangement()) {
+        return Err(FaceBuildError2::DifferentArrangement);
+    }
+    let half_edges = embedding.half_edges().len();
+    let walks = embedding.boundary_walk_count();
+    if half_edges > limits.max_half_edges {
+        return Err(FaceBuildError2::LimitExceeded(
+            FaceBuildResource2::HalfEdges,
+        ));
+    }
+    if walks > limits.max_walks {
+        return Err(FaceBuildError2::LimitExceeded(FaceBuildResource2::Walks));
+    }
+    if limits.max_faces == 0 {
+        return Err(FaceBuildError2::LimitExceeded(FaceBuildResource2::Faces));
+    }
+    let walk_capacity = walks
+        .checked_add(1)
+        .ok_or(FaceBuildError2::LimitExceeded(FaceBuildResource2::Walks))?;
+    let mut core_edges = reserved(half_edges)?;
+    let mut offsets = reserved(walk_capacity)?;
+    offsets.push(0);
+    for walk in 0..walks {
+        for &h in embedding
+            .boundary_walk(walk)
+            .ok_or(FaceBuildError2::InvariantViolation)?
+        {
+            let edge = embedding
+                .half_edges()
+                .get(h)
+                .ok_or(FaceBuildError2::InvariantViolation)?
+                .edge();
+            if !bridges
+                .is_bridge(edge)
+                .ok_or(FaceBuildError2::InvariantViolation)?
+            {
+                if core_edges.len() >= half_edges {
+                    return Err(FaceBuildError2::InvariantViolation);
+                }
+                core_edges.push(h);
+            }
+        }
+        offsets.push(core_edges.len());
+    }
+    let core = |walk: usize| &core_edges[offsets[walk]..offsets[walk + 1]];
+    let point_of = |walk: usize| -> Result<SegmentParameter2, FaceBuildError2> {
+        let selected = if core(walk).is_empty() {
+            embedding
+                .boundary_walk(walk)
+                .ok_or(FaceBuildError2::InvariantViolation)?
+        } else {
+            core(walk)
+        };
+        let h = *selected
+            .first()
+            .ok_or(FaceBuildError2::InvariantViolation)?;
+        let vertex = embedding
+            .half_edges()
+            .get(h)
+            .ok_or(FaceBuildError2::InvariantViolation)?
+            .origin();
+        Ok(embedding
+            .arrangement()
+            .vertices()
+            .get(vertex)
+            .ok_or(FaceBuildError2::InvariantViolation)?
+            .point())
+    };
+    let capacity = walks
+        .checked_add(1)
+        .ok_or(FaceBuildError2::LimitExceeded(FaceBuildResource2::Faces))?
+        .min(limits.max_faces);
+    let mut faces = reserved(capacity)?;
+    faces.push(Face2 { outer: None });
+    let mut owners = reserved(walks)?;
+    owners.resize(walks, usize::MAX);
+    let mut orientations = reserved(walks)?;
+    let mut remaining = limits.max_orientation_comparisons;
+    for (walk, owner) in owners.iter_mut().enumerate() {
+        let edges = core(walk);
+        let size = edges.len();
+        if size == 0 {
+            orientations.push(None);
+            continue;
+        }
+        if size < 3 {
+            return Err(FaceBuildError2::UnsupportedNonSimpleBoundary { walk });
+        }
+        for index in 0..size {
+            let current = embedding
+                .half_edges()
+                .get(edges[index])
+                .ok_or(FaceBuildError2::InvariantViolation)?;
+            let next = embedding
+                .half_edges()
+                .get(edges[(index + 1) % size])
+                .ok_or(FaceBuildError2::InvariantViolation)?;
+            if current.destination() != next.origin() {
+                return Err(FaceBuildError2::UnsupportedNonSimpleBoundary { walk });
+            }
+        }
+        let cost = size
+            .checked_mul(size - 1)
+            .and_then(|n| n.checked_div(2))
+            .and_then(|n| n.checked_add(size - 1))
+            .ok_or(FaceBuildError2::LimitExceeded(
+                FaceBuildResource2::OrientationComparisons,
+            ))?;
+        if cost > remaining {
+            return Err(FaceBuildError2::LimitExceeded(
+                FaceBuildResource2::OrientationComparisons,
+            ));
+        }
+        remaining -= cost;
+        let orientation = simple_cycle_orientation2(
+            embedding,
+            edges,
+            WalkOrientationLimits2 {
+                max_steps: half_edges,
+                max_comparisons: cost,
+            },
+        )
+        .map_err(|error| match error {
+            WalkOrientationError2::NotSimple => {
+                FaceBuildError2::UnsupportedNonSimpleBoundary { walk }
+            }
+            WalkOrientationError2::AllocationFailed => FaceBuildError2::AllocationFailed,
+            WalkOrientationError2::LimitExceeded(_) => {
+                FaceBuildError2::LimitExceeded(FaceBuildResource2::OrientationComparisons)
+            }
+            _ => FaceBuildError2::InvariantViolation,
+        })?;
+        orientations.push(Some(orientation));
+        if orientation == Orientation2::Counterclockwise {
+            if faces.len() >= limits.max_faces {
+                return Err(FaceBuildError2::LimitExceeded(FaceBuildResource2::Faces));
+            }
+            *owner = faces.len();
+            faces.push(Face2 { outer: Some(walk) });
+        }
+    }
+    let mut budget = ContainmentBudget {
+        queries: limits.max_containment_queries,
+        edges: limits.max_containment_edge_checks,
+    };
+    for walk in 0..walks {
+        if orientations[walk] == Some(Orientation2::Counterclockwise) {
+            continue;
+        }
+        let point = point_of(walk)?;
+        let mut best: Option<usize> = None;
+        for (candidate, &orientation) in orientations.iter().enumerate() {
+            if orientation != Some(Orientation2::Counterclockwise) {
+                continue;
+            }
+            match relation_edges(embedding, point, core(candidate), &mut budget)? {
+                Relation::Inside => {}
+                Relation::Boundary if orientations[walk].is_none() => {
+                    return Err(FaceBuildError2::AmbiguousContainment);
+                }
+                _ => continue,
+            }
+            if let Some(current) = best {
+                let candidate_point = point_of(candidate)?;
+                match relation_edges(embedding, candidate_point, core(current), &mut budget)? {
+                    Relation::Inside => best = Some(candidate),
+                    Relation::Boundary => return Err(FaceBuildError2::AmbiguousContainment),
+                    Relation::Outside => {
+                        if relation_edges(
+                            embedding,
+                            point_of(current)?,
+                            core(candidate),
+                            &mut budget,
+                        )? != Relation::Inside
+                        {
+                            return Err(FaceBuildError2::AmbiguousContainment);
+                        }
+                    }
+                }
+            } else {
+                best = Some(candidate);
+            }
+        }
+        owners[walk] = best.map_or(0, |index| owners[index]);
+    }
+    let mut half_owners = reserved(half_edges)?;
+    half_owners.resize(half_edges, usize::MAX);
+    for (walk, &owner) in owners.iter().enumerate() {
+        for &h in embedding
+            .boundary_walk(walk)
+            .ok_or(FaceBuildError2::InvariantViolation)?
+        {
+            let slot = half_owners
+                .get_mut(h)
+                .ok_or(FaceBuildError2::InvariantViolation)?;
+            if *slot != usize::MAX {
+                return Err(FaceBuildError2::InvariantViolation);
+            }
+            *slot = owner;
+        }
+    }
+    if half_owners.iter().any(|&owner| owner >= faces.len()) {
+        return Err(FaceBuildError2::InvariantViolation);
+    }
+    for (edge, _) in embedding.arrangement().edges().iter().enumerate() {
+        if bridges
+            .is_bridge(edge)
+            .ok_or(FaceBuildError2::InvariantViolation)?
+        {
+            let first = *half_owners
+                .get(edge * 2)
+                .ok_or(FaceBuildError2::InvariantViolation)?;
+            let second = *half_owners
+                .get(edge * 2 + 1)
+                .ok_or(FaceBuildError2::InvariantViolation)?;
+            if first == usize::MAX || first != second {
+                return Err(FaceBuildError2::InvariantViolation);
+            }
+        }
     }
     Ok(PlanarFaces2 {
         embedding,

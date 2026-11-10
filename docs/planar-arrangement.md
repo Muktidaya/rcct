@@ -74,4 +74,5 @@ graph tests provide finite evidence rather than a formal proof. See
 [repeated-cut prerequisites](repeated-cut-prerequisites.md) for further gates.
 
 [Graph bridge analysis](planar-bridges.md) classifies connected components and
-merged graph edges; it does not yet make bridge-containing face walks supported.
+merged graph edges; an opt-in face builder accepts a bounded subset of
+bridge-containing walks.
