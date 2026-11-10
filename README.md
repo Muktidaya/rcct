@@ -66,6 +66,10 @@ order and direct component division.
   endpoint-touch and overlap parameters, ordering, capacity assumptions, and limitations.
 - [Repeated-cut prerequisites](docs/repeated-cut-prerequisites.md): exact
   constructed-input, resource and arrangement gates.
+- [Bounded constructed predicates](docs/constructed-predicates.md): supported
+  first-generation orientation and original-support span split contracts.
+- [Arithmetic backend evaluation](docs/arithmetic-backend-evaluation.md):
+  preliminary license, dependency and unsafe-code tradeoffs.
 - [Verification record](docs/verification.md): independent references,
   acceptance budgets, tagged-source compatibility checks, and exact CI evidence.
 - [Contribution guide](CONTRIBUTING.md): checks and source-provenance requirements.
@@ -131,6 +135,7 @@ python3 tools/generate_crossing_order_fixtures.py --check
 python3 tools/generate_parameter_enclosures.py --check
 python3 tools/generate_crossing_coordinate_enclosures.py --check
 python3 tools/generate_crossing_point_order.py --check
+python3 tools/generate_constructed_orientation.py --check
 python3 tools/check_package.py
 ```
 

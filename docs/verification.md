@@ -250,3 +250,21 @@ On Rust 1.99.1, local formatting, Clippy, debug/release tests, rustdoc, fixture
 checks and the dirty-candidate package/downstream check passed. The crossing
 witness tests and packaged checks were rerun after extending the oracle to input
 point comparisons. Hosted CI and formal verification were not run.
+
+### First-generation constructed orientation and source spans
+
+An independent temporary Python `Fraction` probe compared 2,000 crossing-point
+identity/order pairs and 5,000 mixed raw/first-generation constructed orientation
+triples sampled from the existing crossing-coordinate corpus against the Rust
+results. The persistent constructed
+orientation fixture adds 256 independently generated mixed cases, while focused
+tests cover equal constructions, overlapping floating enclosures with different
+exact signs, exponent extremes, budget exhaustion and unchanged inputs on
+failure. Source-span tests check repeated one-third/two-thirds splits, 512
+Fraction-derived event orders, different sources, endpoint/out-of-span rejection
+and unchanged split budgets on failure. The temporary probes are not bundled;
+these are finite tests and reviewed bounds, not a formal proof.
+
+Rust 1.99.1 formatting, Clippy, debug/release tests, rustdoc, all fixture checks
+and the dirty-candidate package/downstream check passed locally. Hosted CI and
+formal verification were not run.

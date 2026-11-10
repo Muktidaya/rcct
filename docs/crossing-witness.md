@@ -109,6 +109,12 @@ and repeated constructed cuts are not provided by these APIs. `None` from
 Use the existing classifier to distinguish other events. Future work must
 address those cases explicitly before treating the segment milestone as complete.
 
+`SegmentSpan2` can retain and repeatedly split an ordered interval on the same
+original input segment. It is not a constructed segment accepted by the
+intersection APIs. `orient_constructed2d` accepts first-generation crossing
+points and raw input points under an explicit work budget. See the
+[bounded operations contract](constructed-predicates.md) for scope and limits.
+
 `tests/crossing_witness.rs` checks equal unreduced fractions, ordering,
 different source segments, endpoint contacts, extreme exponents, and 768 cases
 whose expected order is independently generated with Python `Fraction`.

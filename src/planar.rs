@@ -23,6 +23,7 @@ type CoordinateInteger = SignedMagnitude<COORDINATE_LIMBS>;
 type PredicateInteger = SignedMagnitude<PREDICATE_LIMBS>;
 type ConstructionInteger = SignedMagnitude<99>;
 type ComparisonInteger = SignedMagnitude<165>;
+type OrientationInteger = SignedMagnitude<330>;
 
 /// A finite point in a caller-owned two-dimensional Cartesian frame.
 ///
@@ -390,6 +391,132 @@ impl SegmentParameter2 {
     }
 }
 
+/// A nonempty parameter interval on an original finite directed segment.
+///
+/// Bounds retain exact raw-input parameters. This is a view of one original
+/// support segment, not a new rational segment usable in intersection APIs.
+#[derive(Clone)]
+pub struct SegmentSpan2 {
+    start: SegmentParameter2,
+    end: SegmentParameter2,
+}
+
+impl SegmentSpan2 {
+    /// Returns the whole original nonzero input segment as a parameter span.
+    pub fn whole(segment: Segment2) -> Self {
+        Self {
+            start: parameter_for_input_point(segment, segment.start),
+            end: parameter_for_input_point(segment, segment.end),
+        }
+    }
+
+    /// Builds a nonempty span from ordered parameters of one directed segment.
+    pub fn try_new(
+        start: SegmentParameter2,
+        end: SegmentParameter2,
+    ) -> Result<Self, SpanSplitError> {
+        match start.compare_on_first(&end) {
+            None => Err(SpanSplitError::DifferentSource),
+            Some(Ordering::Less) => Ok(Self { start, end }),
+            Some(_) => Err(SpanSplitError::EmptyOrReversed),
+        }
+    }
+
+    /// Returns the original directed support segment.
+    pub const fn segment(&self) -> Segment2 {
+        self.start.first
+    }
+    /// Returns the exact first boundary parameter.
+    pub const fn start(&self) -> SegmentParameter2 {
+        self.start
+    }
+    /// Returns the exact last boundary parameter.
+    pub const fn end(&self) -> SegmentParameter2 {
+        self.end
+    }
+
+    /// Splits strictly inside this span using a parameter on the same source.
+    ///
+    /// This immutable operation returns two new spans. On any error, `self` and
+    /// the budget are unchanged. A successful split consumes one split unit.
+    /// It does not construct a new rational segment or mutate topology.
+    pub fn split_at(
+        &self,
+        at: SegmentParameter2,
+        budget: &mut SpanSplitBudget,
+    ) -> Result<(Self, Self), SpanSplitError> {
+        let lower = self
+            .start
+            .compare_on_first(&at)
+            .ok_or(SpanSplitError::DifferentSource)?;
+        let upper = at
+            .compare_on_first(&self.end)
+            .ok_or(SpanSplitError::DifferentSource)?;
+        if lower != Ordering::Less || upper != Ordering::Less {
+            return Err(SpanSplitError::NotInterior);
+        }
+        if budget.remaining == 0 {
+            return Err(SpanSplitError::SplitLimitExceeded);
+        }
+        let left = Self {
+            start: self.start,
+            end: at,
+        };
+        let right = Self {
+            start: at,
+            end: self.end,
+        };
+        budget.remaining -= 1;
+        Ok((left, right))
+    }
+}
+
+/// A caller-chosen cap on successful span splits.
+///
+/// Each attempt has fixed-width comparisons, but this cap does not limit the
+/// number of rejected calls, caller-owned storage, wall time, or allocations.
+#[derive(Debug, Eq, PartialEq)]
+pub struct SpanSplitBudget {
+    remaining: u64,
+}
+
+impl SpanSplitBudget {
+    /// Creates a budget for at most `limit` successful splits.
+    pub const fn new(limit: u64) -> Self {
+        Self { remaining: limit }
+    }
+    /// Returns the remaining successful split units.
+    pub const fn remaining(&self) -> u64 {
+        self.remaining
+    }
+}
+
+/// A rejected span construction or split.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SpanSplitError {
+    /// Parameters refer to different directed input segments.
+    DifferentSource,
+    /// A span's start is not strictly before its end.
+    EmptyOrReversed,
+    /// A split parameter is at or outside the span boundaries.
+    NotInterior,
+    /// The caller's successful-split budget is exhausted.
+    SplitLimitExceeded,
+}
+
+impl fmt::Display for SpanSplitError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::DifferentSource => f.write_str("parameters have different directed sources"),
+            Self::EmptyOrReversed => f.write_str("span boundaries must be strictly ordered"),
+            Self::NotInterior => f.write_str("split parameter must be strictly inside the span"),
+            Self::SplitLimitExceeded => f.write_str("span split budget is exhausted"),
+        }
+    }
+}
+
+impl std::error::Error for SpanSplitError {}
+
 /// A tight, inclusive binary64 enclosure of a supported exact segment parameter.
 ///
 /// The bounds lie in `[0, 1]` and are identical or adjacent representable
@@ -507,6 +634,98 @@ impl ExactCrossingPoint2 {
             y: enclose_crossing_coordinate(self.y, self.denominator),
         }
     }
+}
+
+/// A raw input point or first-generation exact crossing for a constructed predicate.
+#[derive(Clone, Copy)]
+pub enum ExactPredicatePoint2<'a> {
+    /// A finite binary64 input point, interpreted exactly as stored.
+    Input(Point2),
+    /// A proper crossing constructed directly from finite binary64 input segments.
+    Crossing(&'a ExactCrossingPoint2),
+}
+
+/// A conservative budget for fixed-width constructed-point predicates.
+///
+/// Units count the maximum limb multiplications charged per operation, not wall
+/// time, memory, additions, or caller-owned storage. Inputs are bounded to raw
+/// points and first-generation crossings; no arbitrary rational input is accepted.
+#[derive(Debug, Eq, PartialEq)]
+pub struct ConstructedPredicateBudget {
+    remaining: u64,
+}
+
+impl ConstructedPredicateBudget {
+    /// Creates a budget with the given maximum charged limb multiplications.
+    pub const fn new(limb_products: u64) -> Self {
+        Self {
+            remaining: limb_products,
+        }
+    }
+    /// Returns the remaining charged limb multiplications.
+    pub const fn remaining(&self) -> u64 {
+        self.remaining
+    }
+    /// Returns the conservative fixed charge for one constructed orientation.
+    pub const fn orientation_cost() -> u64 {
+        8 * 99 * 66 + 2 * 165 * 165
+    }
+}
+
+/// A constructed predicate could not begin within the supplied work budget.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ConstructedPredicateError {
+    /// The remaining limb-product budget is below the operation's fixed charge.
+    WorkLimitExceeded,
+}
+
+impl fmt::Display for ConstructedPredicateError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::WorkLimitExceeded => f.write_str("constructed predicate work limit exceeded"),
+        }
+    }
+}
+
+impl std::error::Error for ConstructedPredicateError {}
+
+/// Returns the exact orientation of three supported raw or constructed points.
+///
+/// Each crossing must be first-generation from raw finite binary64 segments.
+/// Results are exact for those retained constructions; no enclosure or rounded
+/// point is substituted. The fixed charge is checked before arithmetic; on
+/// budget failure inputs and budget are unchanged. This does not support
+/// arbitrary rational inputs, repeated intersection constructions or topology.
+pub fn orient_constructed2d(
+    a: ExactPredicatePoint2<'_>,
+    b: ExactPredicatePoint2<'_>,
+    c: ExactPredicatePoint2<'_>,
+    budget: &mut ConstructedPredicateBudget,
+) -> Result<Orientation2, ConstructedPredicateError> {
+    let cost = ConstructedPredicateBudget::orientation_cost();
+    if budget.remaining < cost {
+        return Err(ConstructedPredicateError::WorkLimitExceeded);
+    }
+    let a = predicate_coordinates(a);
+    let b = predicate_coordinates(b);
+    let c = predicate_coordinates(c);
+    let dx1 = multiply_construction_predicate(b.x, a.denominator)
+        .subtract(multiply_construction_predicate(a.x, b.denominator));
+    let dy1 = multiply_construction_predicate(b.y, a.denominator)
+        .subtract(multiply_construction_predicate(a.y, b.denominator));
+    let dx2 = multiply_construction_predicate(c.x, a.denominator)
+        .subtract(multiply_construction_predicate(a.x, c.denominator));
+    let dy2 = multiply_construction_predicate(c.y, a.denominator)
+        .subtract(multiply_construction_predicate(a.y, c.denominator));
+    let determinant =
+        multiply_comparison_integers(dx1, dy2).subtract(multiply_comparison_integers(dy1, dx2));
+    let result = match determinant.sign() {
+        Ordering::Less => Orientation2::Clockwise,
+        Ordering::Equal => Orientation2::Collinear,
+        Ordering::Greater => Orientation2::Counterclockwise,
+    };
+    budget.remaining -= cost;
+    Ok(result)
 }
 
 /// A retained finite input point on a nonzero directed input segment.
@@ -1085,6 +1304,80 @@ fn compare_construction_coordinates(
 ) -> Ordering {
     multiply_construction_predicate(left, right_denominator)
         .signed_cmp(multiply_construction_predicate(right, left_denominator))
+}
+
+#[derive(Clone, Copy)]
+struct PredicateCoordinates {
+    x: ConstructionInteger,
+    y: ConstructionInteger,
+    denominator: PredicateInteger,
+}
+
+fn predicate_coordinates(point: ExactPredicatePoint2<'_>) -> PredicateCoordinates {
+    match point {
+        ExactPredicatePoint2::Crossing(point) => PredicateCoordinates {
+            x: point.x,
+            y: point.y,
+            denominator: point.denominator,
+        },
+        ExactPredicatePoint2::Input(point) => {
+            let widen = |value: f64| {
+                let coordinate = CoordinateInteger::from_finite_f64(value);
+                let mut limbs = [0_u64; 99];
+                limbs[..COORDINATE_LIMBS].copy_from_slice(&coordinate.limbs);
+                ConstructionInteger {
+                    limbs,
+                    negative: coordinate.negative,
+                }
+            };
+            let mut denominator = PredicateInteger::zero();
+            denominator.limbs[0] = 1;
+            PredicateCoordinates {
+                x: widen(point.x),
+                y: widen(point.y),
+                denominator,
+            }
+        }
+    }
+}
+
+// Each first-generation coordinate difference numerator is < 2^10498;
+// the orientation determinant is < 2^20997, fitting 330 limbs (21120 bits).
+fn multiply_comparison_integers(
+    left: ComparisonInteger,
+    right: ComparisonInteger,
+) -> OrientationInteger {
+    let mut product = [0_u64; 330];
+    for i in 0..165 {
+        if left.limbs[i] == 0 {
+            continue;
+        }
+        let mut carry = 0_u128;
+        for j in 0..165 {
+            if right.limbs[j] == 0 && carry == 0 {
+                continue;
+            }
+            let index = i + j;
+            let sum = u128::from(left.limbs[i]) * u128::from(right.limbs[j])
+                + u128::from(product[index])
+                + carry;
+            product[index] = sum as u64;
+            carry = sum >> 64;
+        }
+        let mut index = i + 165;
+        while carry != 0 {
+            debug_assert!(index < product.len());
+            let sum = u128::from(product[index]) + carry;
+            product[index] = sum as u64;
+            carry = sum >> 64;
+            index += 1;
+        }
+    }
+    OrientationInteger {
+        limbs: product,
+        negative: left.negative != right.negative,
+    }
+    .canonical()
 }
 
 /// A simple closed polygonal wire in the plane.

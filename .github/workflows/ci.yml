@@ -69,3 +69,5 @@ jobs:
         run: python tools/generate_crossing_coordinate_enclosures.py --check
       - name: Reproduce crossing point ordering fixtures
         run: python tools/generate_crossing_point_order.py --check
+      - name: Reproduce constructed orientation fixtures
+        run: python tools/generate_constructed_orientation.py --check

@@ -2,6 +2,8 @@
 
 ## 0.2.0-alpha.1 (unreleased)
 
+- Add budgeted exact orientation for raw and first-generation crossing points,
+  and bounded repeated parameter-span splitting on one original source segment.
 - Compare exact raw-input proper-crossing points with each other and with
   finite input points without rounding or fraction reduction.
 - Add tight finite coordinate enclosures for proper crossings without rounding

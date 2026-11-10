@@ -4,8 +4,12 @@ The current raw-input segment APIs can classify intersections, order event
 parameters on one directed segment, retain exact rational proper-crossing
 points, compare those points with each other and with binary64 input points,
 and produce tight parameter and crossing-coordinate enclosures. These are
-bounded first-generation constructions. They do not accept an exact crossing
-point as a new segment endpoint, and an enclosure is not an exact point identity.
+bounded first-generation constructions. `SegmentSpan2` can repeatedly split a
+parameter span on one original raw input segment at retained parameters. It
+does not accept an exact crossing point as a new segment endpoint or intersect
+arbitrary constructed segments, and an enclosure is not an exact point identity.
+`orient_constructed2d` handles raw and first-generation crossing points under a
+fixed caller budget; see [its contract](constructed-predicates.md).
 
 ## Required arithmetic boundary
 
@@ -22,9 +26,10 @@ not bound arbitrary chains. A production repeated-cut representation needs:
   audited dependency. Review license, provenance, build dependencies, unsafe
   code and the trusted computing base before adoption. The current crate remains
   dependency-free; this document does not approve a backend.
-- Predicates and intersections accepting retained constructed inputs, not
-  rounded `Point2` substitutes. Evaluation and enclosures must stay distinct
-  from identity and incidence decisions.
+- General predicates and intersections accepting retained constructed inputs,
+  not rounded `Point2` substitutes. First-generation orientation now exists;
+  arbitrary rational and repeated-cut inputs do not. Evaluation and enclosures
+  must stay distinct from identity and incidence decisions.
 
 ## Arrangement and validation requirements
 
@@ -35,9 +40,12 @@ source provenance. Point segments have no directed parameter and need explicit
 incidence handling. Construction should operate in a draft and publish only after
 all required comparisons, splits and structural checks succeed within budget.
 
-No arrangement, repeated-cut or general rational construction API is provided by
-the current crate. Required evidence includes independent rational oracles for
+No arrangement or general rational intersection API is provided by the current
+crate. The original-support span split is narrower than general repeated cuts.
+Required evidence includes independent rational oracles for
 second and later cuts, equivalent unreduced representations, exact equality
 across distinct sources, collinear overlap and coincident events, exponent and
 denominator growth, budget exhaustion, cancellation and atomic failure. A
 hosted target matrix and independent review remain separate release gates.
+The preliminary [backend evaluation](arithmetic-backend-evaluation.md) records
+licensing, dependency and unsafe-code questions without approving a backend.
