@@ -17,6 +17,13 @@ second 2000-digit pass. This is a precision stability check, not a proof of
 correct rounding for every possible input. No platform `hypot` or floating-point
 square root is used in the oracle. Fixtures carry no timestamp or random seed.
 
+`orientation.tsv` contains deterministic binary64 point triples with exact
+orientation signs generated independently by
+`tools/generate_orientation_fixtures.py`. The generator converts each float to
+an exact Python `Fraction` before evaluating the determinant. Validate it with
+`python3 tools/generate_orientation_fixtures.py --check`; the seed and fixture
+format are fixed for byte-for-byte reproducibility.
+
 ## Acceptance budgets
 
 These are empirical release test thresholds, not universal API accuracy claims.

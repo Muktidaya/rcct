@@ -129,3 +129,33 @@ baseline belong to the planned v0.2.0 scope. This release establishes only the
 current primitive-level contracts and finite verification evidence. Formal
 proofs, adaptive/exact geometric predicates, security audit and application-
 specific safety qualification remain outside this evidence.
+
+## 0.2.0-alpha.1 development slice
+
+The candidate starts from the verified `root` commit
+`c83f03a12fc7d6db323a1b5b94aa63308bbcff00` (2026-11-09). The package version
+is an unreleased prerelease; no tag, hosted workflow, or registry package has
+been created for it. Its declared minimum is Rust 1.99.1. The existing 0.1.1
+release and its Rust 1.85 support record above remain historical and unchanged.
+
+The initial planar slice passed all checks below locally on Rust 1.99.1,
+including the packaged candidate and its downstream compatibility consumer in
+debug and release. These results apply only to the exact candidate state
+recorded by the implementation handoff, not to an unrun hosted matrix:
+
+- `cargo +1.99.1 fmt --all -- --check`
+- `cargo +1.99.1 clippy --locked --offline --all-targets --all-features -- -D warnings`
+- `cargo +1.99.1 test --locked --offline --all-features`
+- `cargo +1.99.1 test --locked --offline --all-features --release`
+- `RUSTDOCFLAGS="-D warnings" cargo +1.99.1 doc --locked --offline --no-deps --all-features`
+- `python3 tools/generate_numeric_fixtures.py --check`
+- `python3 tools/generate_orientation_fixtures.py --check`
+- `python3 tools/check_package.py --toolchain 1.99.1 --allow-dirty`
+
+The added predicate regression compares every ordered triple on a 5 by 5 integer
+coordinate grid against an `i128` determinant, compares 256 deterministic
+binary64 triples against a separate Python `Fraction` oracle, and includes
+maximum finite, subnormal, and overflowing-subtraction examples. Segment and
+wire tests exercise the event and validation classes documented in
+`docs/planar.md`. This evidence is finite and is not a proof, fuzzing result, or
+CAD-kernel qualification.

@@ -10,12 +10,12 @@ stubs.
 
 Run formatting, Clippy with warnings denied, tests (including doctests), a
 warnings-denied documentation build, deterministic fixture regeneration, and
-`python3 tools/check_package.py` before a release. Run tests in both debug and
-release profiles. Use the pinned Rust 1.99.1 development toolchain and separately
-verify the supported Rust 1.85 minimum and rolling stable toolchain as CI does.
-The development pin does not raise the package minimum. The required 1.99.1
-migration belongs to the planned v0.2.0 scope, not v0.1.1. Do not change the
-machine-wide default for this project.
+`python3 tools/check_package.py` before a release. Validate both fixture
+generators with `--check`. Run tests in both debug and
+release profiles. The unreleased v0.2.0 candidate pins Rust 1.99.1 as its minimum
+and development toolchain; also check the rolling stable toolchain as CI does.
+Published v0.1.1 retains its Rust 1.85 minimum. Do not change the machine-wide
+default for this project.
 
 Document coordinate conventions, invalid inputs, tolerance decisions, overflow,
 and degeneracy at the relevant API. Tests should include boundary and failure

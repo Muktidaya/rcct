@@ -1,6 +1,18 @@
 # Changelog
 
-## 0.1.1 (unreleased)
+## 0.2.0-alpha.1 (unreleased)
+
+- Begin the 0.2.0 line with checked finite planar points and segments, exact
+  orientation predicates, segment-intersection event classification, and
+  simple closed-wire validation. General B-rep and Boolean operations remain
+  future milestones.
+- Raise the unreleased package minimum to Rust 1.99.1 and retain the pinned
+  development toolchain; published 0.1.1 remains supported on Rust 1.85.
+- Add independent small-integer orientation-grid checks and Python
+  `Fraction`-oracle binary64 cases, plus regressions for product overflow,
+  underflow, and coordinate-subtraction overflow.
+
+## 0.1.1 (published 2026-11-09)
 
 - Specify operation-level numerical contracts, caller-defined units, nonfinite
   behavior, overflow/underflow, cancellation, and normalization limitations.
@@ -16,13 +28,6 @@
   responsibilities, direction copies, and normalization maintenance hazards;
   update the README, contributor guidance, and verification record together.
   The additional example is doctested; runtime behavior is unchanged.
-
-## Planned v0.2.0 scope
-
-- Broad geometry API, boundary representation (B-rep), and Boolean operations.
-- Required-toolchain/minimum migration to Rust 1.99.1.
-
-These are planned work, not capabilities of the 0.1.1 release.
 
 ## 0.1.0
 

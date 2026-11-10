@@ -1,9 +1,11 @@
 # Numerical contract and verification
 
-This document describes the implemented `gp` operations in rcct 0.1.1. It is
-not a specification for a future CAD kernel. The implementation is original
-Apache-2.0 Rust using elementary Cartesian formulas; no OCCT implementation,
-test data, or translated source is used.
+This document describes the implemented `gp` operations and the initial planar
+predicate/topology slice in the unreleased rcct 0.2.0 development line. The
+published 0.1.1 package contains only the 3D `gp` API. These contracts are not a
+specification for a complete CAD kernel. The implementation is original
+Apache-2.0 Rust using elementary Cartesian formulas and exact integer arithmetic;
+no OCCT implementation, test data, or translated source is used.
 
 ## Coordinates, units, and comparisons
 
@@ -18,8 +20,10 @@ model scale, snapping threshold, or geometric tolerance is hidden in the API.
 Constructors and public point/vector fields accept all `f64` values. `is_finite`
 checks all three components; it does not establish valid geometry. `PartialEq`
 compares components exactly, including `+0.0 == -0.0` and `NaN != NaN`.
-NaN payloads and signs are not stable API output. No operation here is an exact
-or adaptive predicate for coincidence, orthogonality, parallelism, or orientation.
+NaN payloads and signs are not stable API output. The `gp` operations described
+in this section are not exact or adaptive predicates for coincidence,
+orthogonality, parallelism, or orientation. The separately documented planar
+`orient2d` predicate has a narrower exact contract.
 
 ## Operation contracts
 
@@ -92,6 +96,34 @@ actually run. Numerical budgets in tests are regression acceptance criteria for
 that corpus, not mathematical error bounds for every possible input.
 
 The crate remains dependency-free and forbids unsafe Rust. No complete CAD
-kernel, B-rep/Boolean operation, robust predicate, safety qualification, formal
+kernel, B-rep/Boolean operation, general-purpose robust predicate suite, safety qualification, formal
 proof, independent security audit, or certification is claimed. Tests are
 finite evidence and do not establish suitability for safety-critical use.
+
+## Checked planar geometry and exact predicates
+
+`crate::planar` accepts only finite `Point2` coordinates and rejects
+zero-length `Segment2` values. Unlike the unchecked 3D primitives above,
+nonfinite coordinates cannot enter this API through its public constructors.
+Coordinates still use one caller-owned frame and units; no scale or tolerance
+is inferred.
+
+`crate::planar::orient2d` evaluates the determinant sign exactly for the
+represented binary64 coordinates. Every finite binary64 number is an integer
+multiple of 2^-1074. The implementation embeds coordinates at that common
+scale, forms exact differences and products in fixed-width integer limbs, and
+returns only the determinant sign. The limb widths cover the entire finite
+binary64 exponent range and the determinant of any three accepted points.
+Consequently, product overflow, subtraction overflow, and product underflow in
+ordinary `f64` arithmetic cannot change this predicate's answer. This exactness
+is specific to orientation of stored coordinates; it does not extend to later
+constructed intersection coordinates.
+
+`crate::planar::intersect_segments` reports disjoint, single-point, or
+positive-length-overlap events. It distinguishes a proper crossing from an
+endpoint/boundary touch and deliberately does not return an approximate
+intersection coordinate. `crate::planar::SimpleWire2` checks a polygonal
+cycle by classifying edge pairs exactly. Its straightforward O(n²) validation
+is suitable for the initial topology foundation, not a spatially accelerated
+large-model checker. Arcs, spline curves, face containment, shells, and solids
+are outside this slice.

@@ -3,16 +3,18 @@
 An independent **pure-Rust CAD-kernel project**, starting with a small geometry
 foundation and using Open CASCADE Technology (OCCT) as a functional reference.
 
-**Status: early development, v0.1.1 release candidate.** The crate provides 3D points, vectors,
-and checked unit directions. It is not a CAD kernel yet, is not API-compatible
-with OCCT, and cannot import, model, mesh, or export CAD solids. There are no C++
-bindings, native OCCT dependencies, build scripts, or third-party Rust dependencies.
+**Status: early development; the current unreleased package is `0.2.0-alpha.1`.**
+The latest published version remains `0.1.1`. The crate provides elementary 3D
+geometry plus a first checked planar geometry and topology slice. It is not a
+complete CAD kernel, is not API-compatible with OCCT, and cannot import, model,
+mesh, or export CAD solids. There are no C++ bindings, native OCCT dependencies,
+build scripts, or third-party Rust dependencies.
 
 ## Use
 
 ```toml
 [dependencies]
-rcct = "0.1.1"
+rcct = "0.2.0-alpha.1"
 ```
 
 ```rust
@@ -44,6 +46,9 @@ Choose the type by what the value represents:
 | `Point3` | A location in a chosen frame | Subtract another point to obtain a displacement; do not add or scale locations as vectors. |
 | `Vector3` | A displacement with magnitude | Retain it for translation; its components are unchecked `f64` values. |
 | `UnitDirection3` | A checked direction with magnitude discarded | Construction rejects zero/nonfinite vectors; its components are dimensionless. |
+| `Point2` | A checked finite planar location | Construct with `Point2::try_new`; nonfinite coordinates are rejected. |
+| `Segment2` | A checked nonzero finite segment | Construction rejects equal endpoints. |
+| `SimpleWire2` | A validated simple closed polygonal wire | Ordered vertices define an implicit closing edge. |
 
 Frames and units are caller-owned, not encoded in these types. The source-level
 rustdoc includes an executable `end - start` example and explains why floating-
@@ -53,6 +58,8 @@ order and direct component division.
 
 - [Numerical contract](docs/numerics.md): operation semantics, conditioning,
   exceptional inputs, and normalization limits.
+- [Planar geometry slice](docs/planar.md): exact orientation, segment events,
+  and simple closed-wire validation contracts.
 - [Verification record](docs/verification.md): independent references,
   acceptance budgets, tagged-source compatibility checks, and exact CI evidence.
 - [Contribution guide](CONTRIBUTING.md): checks and source-provenance requirements.
@@ -67,7 +74,7 @@ cargo doc --no-deps --all-features
 
 Open `target/doc/rcct/index.html` for documentation built from the current
 checkout. The hosted [API documentation](https://docs.rs/rcct) describes the
-published crate and may lag this release candidate.
+published crate and does not yet document this unreleased candidate.
 
 ## Scope and development direction
 
@@ -76,11 +83,14 @@ OCCT is a functional reference, not a runtime dependency or an architectural
 constraint. The goal is a Rust-native design that can improve on reference
 implementations rather than reproduce their source, API, or internal structure.
 
-- **v0.1.1:** numerical contracts and independent verification of the existing
-  point/vector/direction API, preserving source compatibility and Rust 1.85.
-- **v0.2.0 planned scope:** a broad geometry API, boundary representation (B-rep),
-  Boolean operations, and migration of the supported toolchain/minimum to
-  Rust 1.99.1. These capabilities are not implemented by v0.1.1.
+- **v0.1.1:** published elementary 3D point/vector/direction API, numerical
+  contracts, and independent verification; it supports Rust 1.85.
+- **v0.2.0 in progress:** a first bounded slice adds checked finite planar
+  points and segments, exact orientation, exact segment-intersection event
+  classification, and simple closed-wire validation. The prerelease declares
+  Rust 1.99.1 as its minimum.
+- **Remaining v0.2.0 scope:** broader geometry, B-rep, and Boolean operations.
+  These are not implemented by this slice and require additional milestones.
 - **Later direction:** additional modeling algorithms and exchange formats.
 
 The roadmap is a statement of intended scope, not an OCCT compatibility promise,
@@ -94,31 +104,31 @@ LGPL-licensed OCCT source. See
 
 ## Build and check
 
-The repository pins **Rust 1.99.1**, the latest stable release verified on
-2026-11-09 against the [official stable channel manifest](https://static.rust-lang.org/dist/channel-rust-stable.toml).
+The repository pins **Rust 1.99.1** as both its development toolchain and
+current package minimum, verified on 2026-11-09 against the [official stable
+channel manifest](https://static.rust-lang.org/dist/channel-rust-stable.toml).
 `rust-toolchain.toml` selects the minimal profile plus `rustfmt` and Clippy;
 ordinary `cargo` commands use that project toolchain without changing the
-machine-wide default. This development-toolchain selection does **not** raise
-v0.1.1's supported minimum: `rust-version = "1.85"` preserves the published
-v0.1.0 minimum (edition 2024). CI and local checks exercise that minimum
-separately. Making Rust 1.99.1 the required minimum is planned for v0.2.0.
+machine-wide default. Published v0.1.1 retains its Rust 1.85 minimum; the
+unreleased 0.2.0 prerelease intentionally raises its minimum to Rust 1.99.1.
 
 ```sh
 cargo fmt --all -- --check
 cargo clippy --all-targets --all-features -- -D warnings
 cargo test --locked --all-features
 cargo test --locked --all-features --release
-cargo +1.85.0 test --locked --all-features
+cargo +1.99.1 test --locked --all-features
 RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --all-features
 python3 tools/generate_numeric_fixtures.py --check
+python3 tools/generate_orientation_fixtures.py --check
 python3 tools/check_package.py
 ```
 
-CI configures the Rust 1.85 minimum, pinned Rust 1.99.1, and rolling stable
-channel across Linux, macOS, and Windows, including Linux/macOS ARM64, with
-debug and release tests. The numerical-verification commit passed all 14 hosted
-jobs; see the [verification record](docs/verification.md) for the exact revision,
-run link, and the requirement to recheck later commits. This crate does
+CI configures pinned Rust 1.99.1 and rolling stable across Linux, macOS, and
+Windows, including Linux/macOS ARM64, with debug and release tests. The previous
+v0.1.1 verification record covers its exact published revision; this candidate
+must establish its own CI evidence. See the [verification record](docs/verification.md).
+This crate does
 not require an OCCT installation or a C++ toolchain. The fixture generator and
 package/downstream checker use Python 3.9+ standard-library tools only.
 

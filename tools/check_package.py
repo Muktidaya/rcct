@@ -65,7 +65,8 @@ def main():
         baseline = temporary / "baseline"
         source = ROOT / "tests" / "api_compat.rs"
         for relative in ("LICENSE", "NOTICE.md", "README.md", "docs/numerics.md",
-                         "tests/api_compat.rs", "tools/generate_numeric_fixtures.py"):
+                         "tests/api_compat.rs", "tools/generate_numeric_fixtures.py",
+                         "tools/generate_orientation_fixtures.py"):
             if (packaged / relative).read_bytes() != (ROOT / relative).read_bytes():
                 raise SystemExit("packaged file differs from checkout: " + relative)
         # Override any inherited target directory so packaged/downstream evidence
