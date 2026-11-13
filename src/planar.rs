@@ -45,7 +45,7 @@ pub use faces::{
     FaceWindingLimits2, FaceWindingResource2, FaceWindings2, PlanarFaces2,
     build_faces_with_bridges2, build_faces2, face_windings2,
 };
-pub(crate) use orientation3::orient3d_exact;
+pub(crate) use orientation3::{noncollinear3_exact, orient3d_exact};
 
 const COORDINATE_LIMBS: usize = 33;
 const PREDICATE_LIMBS: usize = 66;

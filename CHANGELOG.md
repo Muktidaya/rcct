@@ -2,6 +2,9 @@
 
 ## 0.2.0-alpha.1 (unreleased)
 
+- Classify finite raw segments against three-point raw planes, retaining the
+  original supports as an opaque proper-crossing witness.
+
 - Add exact 3D orientation for four finite binary64 input points using bounded
   integer arithmetic; general constructed-point predicates remain future work.
 

@@ -90,3 +90,10 @@ independent Python `Fraction` oracle uses a different anchor and expansion. Its
 corpus covers each finite exponent field, extreme signs, subnormals, a
 near-coplanar case and deterministic mixed-exponent inputs. Regenerate with the
 script or check with `--check`; finite fixtures do not prove universal safety.
+
+`segment_plane.tsv` records finite raw three-point-plane and segment inputs,
+with exact set-event classes. `tools/generate_segment_plane_fixtures.py`
+uses independent Python `Fraction` arithmetic and, for proper crossings,
+checks the exact parameter is interior and satisfies the plane equation. It
+includes mixed exponents, subnormals, extrema and invalid planes. Regenerate or
+run the script with `--check`; fixtures are finite evidence, not proof.

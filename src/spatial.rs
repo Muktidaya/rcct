@@ -268,3 +268,119 @@ pub fn orient3d(
         std::cmp::Ordering::Greater => Orientation3::Positive,
     }
 }
+
+/// Failure to construct a plane through three finite raw-input points.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum RawPlaneError3 {
+    /// The exact represented points are collinear or repeated.
+    Collinear,
+}
+impl fmt::Display for RawPlaneError3 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Collinear => f.write_str("plane points must be noncollinear"),
+        }
+    }
+}
+impl std::error::Error for RawPlaneError3 {}
+
+/// An oriented infinite plane defined by three noncollinear finite input points.
+///
+/// The orientation is the exact cross product `(b-a) × (c-a)` in the
+/// caller's right-handed frame. No normalization or tolerance is applied.
+/// The original points are retained; no identity or geometric equality between
+/// different representations is promised. This is a raw-input plane and is
+/// not a surface, B-rep face, or general rational plane representation.
+#[derive(Clone, Copy, Debug)]
+pub struct RawPlane3 {
+    points: [FinitePoint3; 3],
+}
+impl RawPlane3 {
+    /// Rejects exactly collinear points using the exact represented dyadics.
+    /// Signed zeros denote the same mathematical value. This check uses fixed
+    /// width integer arithmetic and no heap allocation.
+    pub fn try_new(
+        a: FinitePoint3,
+        b: FinitePoint3,
+        c: FinitePoint3,
+    ) -> Result<Self, RawPlaneError3> {
+        if crate::planar::noncollinear3_exact(a.get(), b.get(), c.get()) {
+            Ok(Self { points: [a, b, c] })
+        } else {
+            Err(RawPlaneError3::Collinear)
+        }
+    }
+    /// Returns the ordered defining points as originally stored.
+    pub const fn points(self) -> [FinitePoint3; 3] {
+        self.points
+    }
+    /// Returns the exact side of a finite raw-input point relative to the
+    /// oriented plane. This result concerns the represented input coordinates;
+    /// it does not certify a rounded approximation of a constructed point.
+    pub fn side(self, point: FinitePoint3) -> Orientation3 {
+        orient3d(self.points[0], self.points[1], self.points[2], point)
+    }
+    /// Classifies the exact set intersection with a finite nonzero segment.
+    ///
+    /// `Start` and `End` return the original stored endpoint, including its
+    /// zero-sign bits. A strict crossing returns the original supports as an
+    /// opaque witness of a unique exact crossing; no coordinate, rounded
+    /// parameter, or cross-witness equality is constructed. Classification
+    /// has fixed-width bounded work and makes no heap allocation.
+    pub fn intersect_segment(self, segment: Segment3) -> SegmentPlaneIntersection3 {
+        let start = self.side(segment.start());
+        let end = self.side(segment.end());
+        match (start, end) {
+            (Orientation3::Coplanar, Orientation3::Coplanar) => {
+                SegmentPlaneIntersection3::Contained
+            }
+            (Orientation3::Coplanar, _) => SegmentPlaneIntersection3::Start(segment.start()),
+            (_, Orientation3::Coplanar) => SegmentPlaneIntersection3::End(segment.end()),
+            (Orientation3::Positive, Orientation3::Positive)
+            | (Orientation3::Negative, Orientation3::Negative) => {
+                SegmentPlaneIntersection3::Disjoint
+            }
+            _ => SegmentPlaneIntersection3::ProperCrossing(RawSegmentPlaneCrossing3 {
+                plane: self,
+                segment,
+            }),
+        }
+    }
+}
+
+/// A first-generation strict crossing defined by a raw plane and segment.
+///
+/// Opposite exact endpoint side signs establish a unique interior intersection.
+/// The supports retain that mathematical definition; no parameter, rounded
+/// coordinates, point identity, witness equality or arbitrary repeated
+/// intersection is provided.
+#[derive(Clone, Copy, Debug)]
+pub struct RawSegmentPlaneCrossing3 {
+    plane: RawPlane3,
+    segment: Segment3,
+}
+impl RawSegmentPlaneCrossing3 {
+    /// Returns the plane used to define the crossing.
+    pub const fn plane(self) -> RawPlane3 {
+        self.plane
+    }
+    /// Returns the directed segment used to define the crossing.
+    pub const fn segment(self) -> Segment3 {
+        self.segment
+    }
+}
+
+/// Exact closed-set event class for a raw segment and raw plane.
+#[derive(Clone, Copy, Debug)]
+pub enum SegmentPlaneIntersection3 {
+    /// The segment and plane have no point in common.
+    Disjoint,
+    /// The segment's start is its only plane point.
+    Start(FinitePoint3),
+    /// The segment's end is its only plane point.
+    End(FinitePoint3),
+    /// The entire nonzero segment is contained in the plane.
+    Contained,
+    /// Their unique shared point lies strictly inside the segment.
+    ProperCrossing(RawSegmentPlaneCrossing3),
+}

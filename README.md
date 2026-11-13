@@ -67,6 +67,8 @@ order and direct component division.
   directed vertex-simple wires and edge-use counts without geometric validity claims.
 - [Proposed polyhedral Boolean contract](docs/polyhedral-boolean-contract.md):
   intended convex-input milestone, failure and validation boundaries.
+- [Raw segment and plane events](docs/segment-plane3.md): exact event classes
+  and retained original-support crossing witnesses.
 - [Exact 3D orientation](docs/orientation3.md): raw finite-input determinant
   sign, fixed-width bounds and constructed-point limitations.
 - [Planar geometry slice](docs/planar.md): exact orientation, segment events,
@@ -155,6 +157,7 @@ RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --all-features
 python3 tools/generate_numeric_fixtures.py --check
 python3 tools/generate_orientation_fixtures.py --check
 python3 tools/generate_orientation3_fixtures.py --check
+python3 tools/generate_segment_plane_fixtures.py --check
 python3 tools/generate_crossing_order_fixtures.py --check
 python3 tools/generate_parameter_enclosures.py --check
 python3 tools/generate_crossing_coordinate_enclosures.py --check
