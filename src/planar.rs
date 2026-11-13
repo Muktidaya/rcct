@@ -21,6 +21,7 @@ mod boolean;
 mod bridges;
 mod embedding;
 mod faces;
+mod orientation3;
 pub use arrangement::{
     Arrangement2, ArrangementEdge2, ArrangementEdgeUse2, ArrangementError2, ArrangementLimits2,
     ArrangementResource2, ArrangementVertex2, build_arrangement2,
@@ -44,6 +45,7 @@ pub use faces::{
     FaceWindingLimits2, FaceWindingResource2, FaceWindings2, PlanarFaces2,
     build_faces_with_bridges2, build_faces2, face_windings2,
 };
+pub(crate) use orientation3::{noncollinear3_exact, orient3d_exact};
 
 const COORDINATE_LIMBS: usize = 33;
 const PREDICATE_LIMBS: usize = 66;
@@ -2083,19 +2085,18 @@ fn exact_cross(a: Point2, b: Point2, c: Point2, d: Point2) -> PredicateInteger {
 // 132 limbs supply 8448 bits, including for unnormalized equivalent fractions.
 fn multiply_predicate_magnitudes(left: PredicateInteger, right: PredicateInteger) -> [u64; 132] {
     let mut product = [0_u64; 132];
-    for i in 0..PREDICATE_LIMBS {
-        if left.limbs[i] == 0 {
+    for (i, &left_limb) in left.limbs.iter().enumerate() {
+        if left_limb == 0 {
             continue;
         }
         let mut carry = 0_u128;
-        for j in 0..PREDICATE_LIMBS {
-            if right.limbs[j] == 0 && carry == 0 {
+        for (j, &right_limb) in right.limbs.iter().enumerate() {
+            if right_limb == 0 && carry == 0 {
                 continue;
             }
             let index = i + j;
-            let sum = u128::from(left.limbs[i]) * u128::from(right.limbs[j])
-                + u128::from(product[index])
-                + carry;
+            let sum =
+                u128::from(left_limb) * u128::from(right_limb) + u128::from(product[index]) + carry;
             product[index] = sum as u64;
             carry = sum >> 64;
         }
@@ -2125,19 +2126,18 @@ fn shift_predicate_by_1074(value: PredicateInteger) -> [u64; 99] {
 
 fn multiply_predicate_coordinate(left: PredicateInteger, right: CoordinateInteger) -> [u64; 99] {
     let mut product = [0_u64; 99];
-    for i in 0..PREDICATE_LIMBS {
-        if left.limbs[i] == 0 {
+    for (i, &left_limb) in left.limbs.iter().enumerate() {
+        if left_limb == 0 {
             continue;
         }
         let mut carry = 0_u128;
-        for j in 0..COORDINATE_LIMBS {
-            if right.limbs[j] == 0 && carry == 0 {
+        for (j, &right_limb) in right.limbs.iter().enumerate() {
+            if right_limb == 0 && carry == 0 {
                 continue;
             }
             let index = i + j;
-            let sum = u128::from(left.limbs[i]) * u128::from(right.limbs[j])
-                + u128::from(product[index])
-                + carry;
+            let sum =
+                u128::from(left_limb) * u128::from(right_limb) + u128::from(product[index]) + carry;
             product[index] = sum as u64;
             carry = sum >> 64;
         }
@@ -2223,19 +2223,18 @@ fn multiply_construction_predicate(
     right: PredicateInteger,
 ) -> ComparisonInteger {
     let mut product = [0_u64; 165];
-    for i in 0..99 {
-        if left.limbs[i] == 0 {
+    for (i, &left_limb) in left.limbs.iter().enumerate() {
+        if left_limb == 0 {
             continue;
         }
         let mut carry = 0_u128;
-        for j in 0..PREDICATE_LIMBS {
-            if right.limbs[j] == 0 && carry == 0 {
+        for (j, &right_limb) in right.limbs.iter().enumerate() {
+            if right_limb == 0 && carry == 0 {
                 continue;
             }
             let index = i + j;
-            let sum = u128::from(left.limbs[i]) * u128::from(right.limbs[j])
-                + u128::from(product[index])
-                + carry;
+            let sum =
+                u128::from(left_limb) * u128::from(right_limb) + u128::from(product[index]) + carry;
             product[index] = sum as u64;
             carry = sum >> 64;
         }
@@ -2307,19 +2306,18 @@ fn multiply_comparison_integers(
     right: ComparisonInteger,
 ) -> OrientationInteger {
     let mut product = [0_u64; 330];
-    for i in 0..165 {
-        if left.limbs[i] == 0 {
+    for (i, &left_limb) in left.limbs.iter().enumerate() {
+        if left_limb == 0 {
             continue;
         }
         let mut carry = 0_u128;
-        for j in 0..165 {
-            if right.limbs[j] == 0 && carry == 0 {
+        for (j, &right_limb) in right.limbs.iter().enumerate() {
+            if right_limb == 0 && carry == 0 {
                 continue;
             }
             let index = i + j;
-            let sum = u128::from(left.limbs[i]) * u128::from(right.limbs[j])
-                + u128::from(product[index])
-                + carry;
+            let sum =
+                u128::from(left_limb) * u128::from(right_limb) + u128::from(product[index]) + carry;
             product[index] = sum as u64;
             carry = sum >> 64;
         }
@@ -2647,17 +2645,29 @@ impl CoordinateInteger {
             return PredicateInteger::zero();
         };
 
-        for left_index in first_left..=last_left {
-            if self.limbs[left_index] == 0 {
+        for (left_index, &left_limb) in self
+            .limbs
+            .iter()
+            .enumerate()
+            .take(last_left + 1)
+            .skip(first_left)
+        {
+            if left_limb == 0 {
                 continue;
             }
             let mut carry = 0_u128;
-            for right_index in first_right..=last_right {
-                if other.limbs[right_index] == 0 && carry == 0 {
+            for (right_index, &right_limb) in other
+                .limbs
+                .iter()
+                .enumerate()
+                .take(last_right + 1)
+                .skip(first_right)
+            {
+                if right_limb == 0 && carry == 0 {
                     continue;
                 }
                 let index = left_index + right_index;
-                let sum = u128::from(self.limbs[left_index]) * u128::from(other.limbs[right_index])
+                let sum = u128::from(left_limb) * u128::from(right_limb)
                     + u128::from(limbs[index])
                     + carry;
                 limbs[index] = sum as u64;

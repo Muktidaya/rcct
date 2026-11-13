@@ -61,6 +61,10 @@ jobs:
         run: python tools/generate_numeric_fixtures.py --check
       - name: Reproduce exact orientation fixtures
         run: python tools/generate_orientation_fixtures.py --check
+      - name: Reproduce exact 3D orientation fixtures
+        run: python tools/generate_orientation3_fixtures.py --check
+      - name: Reproduce raw segment-plane fixtures
+        run: python tools/generate_segment_plane_fixtures.py --check
       - name: Reproduce exact crossing-order fixtures
         run: python tools/generate_crossing_order_fixtures.py --check
       - name: Reproduce parameter enclosure fixtures
@@ -75,3 +79,5 @@ jobs:
         run: python tools/generate_span_query_fixtures.py --check
       - name: Reproduce Boolean triangle fixture
         run: python tools/generate_boolean_triangle_fixture.py --check
+      - name: Reproduce rounded quadratic Bézier fixtures
+        run: python tools/generate_bezier3_fixtures.py --check

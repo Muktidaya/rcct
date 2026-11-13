@@ -234,3 +234,260 @@ impl Plane3 {
         }
     }
 }
+
+/// Failure to evaluate a checked finite-control quadratic Bézier curve.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CurveEvaluationError3 {
+    /// The parameter was NaN or infinite.
+    NonFiniteParameter,
+    /// The finite parameter was outside the closed interval `[0, 1]`.
+    OutOfRangeParameter,
+    /// A rounded intermediate or result was nonfinite.
+    NonFiniteResult,
+}
+impl fmt::Display for CurveEvaluationError3 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::NonFiniteParameter => f.write_str("curve parameter must be finite"),
+            Self::OutOfRangeParameter => f.write_str("curve parameter must be in [0, 1]"),
+            Self::NonFiniteResult => f.write_str("curve evaluation produced a nonfinite value"),
+        }
+    }
+}
+impl std::error::Error for CurveEvaluationError3 {}
+
+/// A non-rational quadratic Bézier curve with three finite control points.
+///
+/// Equal or collinear controls are allowed. Equality compares the stored
+/// ordered control representation, not geometric equivalence. Frames and units
+/// are caller-owned. This representation provides no intersection or robust
+/// incidence predicate and does not establish topological validity.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct QuadraticBezier3 {
+    controls: [FinitePoint3; 3],
+}
+impl QuadraticBezier3 {
+    /// Creates a curve from three already checked finite control points.
+    pub const fn new(start: FinitePoint3, control: FinitePoint3, end: FinitePoint3) -> Self {
+        Self {
+            controls: [start, control, end],
+        }
+    }
+    /// Returns control points in their stored order.
+    pub const fn controls(self) -> [FinitePoint3; 3] {
+        self.controls
+    }
+    /// Returns the coordinatewise bounds of the controls.
+    ///
+    /// These bounds enclose the exact real quadratic curve on `[0, 1]` by the
+    /// convex-hull property; they need not enclose a rounded evaluation.
+    pub fn control_bounds(self) -> Aabb3 {
+        Aabb3::from_points(self.controls[0], self.controls[1])
+            .union(Aabb3::from_points(self.controls[1], self.controls[2]))
+    }
+    /// Evaluates at a finite parameter in `[0, 1]` by de Casteljau interpolation.
+    ///
+    /// For each coordinate, a blend separately rounds `(1 - t)`, the products
+    /// `(1 - t) * a` and `t * b`, and their sum. It blends the first and middle
+    /// controls, then the middle and last, then blends those results. Each
+    /// intermediate must be finite. At `t == 0` or `t == 1`, returns the stored
+    /// endpoint directly, preserving its signed-zero bits. No clamping occurs.
+    ///
+    /// Rounding, cancellation and underflow may change the result; an error may
+    /// occur even when the exact result is finite. The output is not an exact
+    /// construction or a robust geometric predicate.
+    pub fn try_evaluate(self, parameter: f64) -> Result<FinitePoint3, CurveEvaluationError3> {
+        if !parameter.is_finite() {
+            return Err(CurveEvaluationError3::NonFiniteParameter);
+        }
+        if !(0.0..=1.0).contains(&parameter) {
+            return Err(CurveEvaluationError3::OutOfRangeParameter);
+        }
+        if parameter == 0.0 {
+            return Ok(self.controls[0]);
+        }
+        if parameter == 1.0 {
+            return Ok(self.controls[2]);
+        }
+        let a = blend_point(self.controls[0], self.controls[1], parameter)?;
+        let b = blend_point(self.controls[1], self.controls[2], parameter)?;
+        blend_point(a, b, parameter)
+    }
+}
+
+fn blend_point(
+    a: FinitePoint3,
+    b: FinitePoint3,
+    t: f64,
+) -> Result<FinitePoint3, CurveEvaluationError3> {
+    fn blend(a: f64, b: f64, t: f64) -> Result<f64, CurveEvaluationError3> {
+        let complement = 1.0 - t;
+        let left = complement * a;
+        let right = t * b;
+        if !complement.is_finite() || !left.is_finite() || !right.is_finite() {
+            return Err(CurveEvaluationError3::NonFiniteResult);
+        }
+        let result = left + right;
+        if result.is_finite() {
+            Ok(result)
+        } else {
+            Err(CurveEvaluationError3::NonFiniteResult)
+        }
+    }
+    let (a, b) = (a.0, b.0);
+    Ok(FinitePoint3(Point3::new(
+        blend(a.x, b.x, t)?,
+        blend(a.y, b.y, t)?,
+        blend(a.z, b.z, t)?,
+    )))
+}
+
+/// Exact orientation of four finite raw-input points in a right-handed frame.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Orientation3 {
+    /// `(b-a) × (c-a) · (d-a)` is strictly negative.
+    Negative,
+    /// The determinant is exactly zero for the represented coordinates.
+    Coplanar,
+    /// `(b-a) × (c-a) · (d-a)` is strictly positive.
+    Positive,
+}
+
+/// Returns the exact orientation of four finite binary64 input points.
+///
+/// The sign of `(b-a) × (c-a) · (d-a)` is computed from the exact dyadic
+/// values of the stored coordinates without floating-point subtraction,
+/// multiplication, tolerances or rounding. The origin and positive x, y, z
+/// axis points in that order produce [`Orientation3::Positive`]. Signed zeros
+/// denote the same exact value. This predicate accepts raw finite points only;
+/// it does not accept retained constructed rational or algebraic points and
+/// does not construct intersections or establish solid validity. Its fixed-width
+/// integer arithmetic has a bounded amount of work and allocates no heap.
+pub fn orient3d(
+    a: FinitePoint3,
+    b: FinitePoint3,
+    c: FinitePoint3,
+    d: FinitePoint3,
+) -> Orientation3 {
+    match crate::planar::orient3d_exact(a.get(), b.get(), c.get(), d.get()) {
+        std::cmp::Ordering::Less => Orientation3::Negative,
+        std::cmp::Ordering::Equal => Orientation3::Coplanar,
+        std::cmp::Ordering::Greater => Orientation3::Positive,
+    }
+}
+
+/// Failure to construct a plane through three finite raw-input points.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum RawPlaneError3 {
+    /// The exact represented points are collinear or repeated.
+    Collinear,
+}
+impl fmt::Display for RawPlaneError3 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Collinear => f.write_str("plane points must be noncollinear"),
+        }
+    }
+}
+impl std::error::Error for RawPlaneError3 {}
+
+/// An oriented infinite plane defined by three noncollinear finite input points.
+///
+/// The orientation is the exact cross product `(b-a) × (c-a)` in the
+/// caller's right-handed frame. No normalization or tolerance is applied.
+/// The original points are retained; no identity or geometric equality between
+/// different representations is promised. This is a raw-input plane and is
+/// not a surface, B-rep face, or general rational plane representation.
+#[derive(Clone, Copy, Debug)]
+pub struct RawPlane3 {
+    points: [FinitePoint3; 3],
+}
+impl RawPlane3 {
+    /// Rejects exactly collinear points using the exact represented dyadics.
+    /// Signed zeros denote the same mathematical value. This check uses fixed
+    /// width integer arithmetic and no heap allocation.
+    pub fn try_new(
+        a: FinitePoint3,
+        b: FinitePoint3,
+        c: FinitePoint3,
+    ) -> Result<Self, RawPlaneError3> {
+        if crate::planar::noncollinear3_exact(a.get(), b.get(), c.get()) {
+            Ok(Self { points: [a, b, c] })
+        } else {
+            Err(RawPlaneError3::Collinear)
+        }
+    }
+    /// Returns the ordered defining points as originally stored.
+    pub const fn points(self) -> [FinitePoint3; 3] {
+        self.points
+    }
+    /// Returns the exact side of a finite raw-input point relative to the
+    /// oriented plane. This result concerns the represented input coordinates;
+    /// it does not certify a rounded approximation of a constructed point.
+    pub fn side(self, point: FinitePoint3) -> Orientation3 {
+        orient3d(self.points[0], self.points[1], self.points[2], point)
+    }
+    /// Classifies the exact set intersection with a finite nonzero segment.
+    ///
+    /// `Start` and `End` return the original stored endpoint, including its
+    /// zero-sign bits. A strict crossing returns the original supports as an
+    /// opaque witness of a unique exact crossing; no coordinate, rounded
+    /// parameter, or cross-witness equality is constructed. Classification
+    /// has fixed-width bounded work and makes no heap allocation.
+    pub fn intersect_segment(self, segment: Segment3) -> SegmentPlaneIntersection3 {
+        let start = self.side(segment.start());
+        let end = self.side(segment.end());
+        match (start, end) {
+            (Orientation3::Coplanar, Orientation3::Coplanar) => {
+                SegmentPlaneIntersection3::Contained
+            }
+            (Orientation3::Coplanar, _) => SegmentPlaneIntersection3::Start(segment.start()),
+            (_, Orientation3::Coplanar) => SegmentPlaneIntersection3::End(segment.end()),
+            (Orientation3::Positive, Orientation3::Positive)
+            | (Orientation3::Negative, Orientation3::Negative) => {
+                SegmentPlaneIntersection3::Disjoint
+            }
+            _ => SegmentPlaneIntersection3::ProperCrossing(RawSegmentPlaneCrossing3 {
+                plane: self,
+                segment,
+            }),
+        }
+    }
+}
+
+/// A first-generation strict crossing defined by a raw plane and segment.
+///
+/// Opposite exact endpoint side signs establish a unique interior intersection.
+/// The supports retain that mathematical definition; no parameter, rounded
+/// coordinates, point identity, witness equality or arbitrary repeated
+/// intersection is provided.
+#[derive(Clone, Copy, Debug)]
+pub struct RawSegmentPlaneCrossing3 {
+    plane: RawPlane3,
+    segment: Segment3,
+}
+impl RawSegmentPlaneCrossing3 {
+    /// Returns the plane used to define the crossing.
+    pub const fn plane(self) -> RawPlane3 {
+        self.plane
+    }
+    /// Returns the directed segment used to define the crossing.
+    pub const fn segment(self) -> Segment3 {
+        self.segment
+    }
+}
+
+/// Exact closed-set event class for a raw segment and raw plane.
+#[derive(Clone, Copy, Debug)]
+pub enum SegmentPlaneIntersection3 {
+    /// The segment and plane have no point in common.
+    Disjoint,
+    /// The segment's start is its only plane point.
+    Start(FinitePoint3),
+    /// The segment's end is its only plane point.
+    End(FinitePoint3),
+    /// The entire nonzero segment is contained in the plane.
+    Contained,
+    /// Their unique shared point lies strictly inside the segment.
+    ProperCrossing(RawSegmentPlaneCrossing3),
+}

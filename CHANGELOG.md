@@ -2,8 +2,24 @@
 
 ## 0.2.0-alpha.1 (unreleased)
 
+- Add process-local snapshot-scoped handles, scoped wires and bounded declared
+  boundary groups without claiming geometric or face validity.
+- Analyze bounded vertex-link multigraphs of wire occurrences without claiming
+  geometric or manifold validity.
+
+- Count directed edge-use incidence across bounded wire collections, preserving
+  graph identity and explicitly leaving shell validity unestablished.
+
+- Classify finite raw segments against three-point raw planes, retaining the
+  original supports as an opaque proper-crossing witness.
+
+- Add exact 3D orientation for four finite binary64 input points using bounded
+  integer arithmetic; general constructed-point predicates remain future work.
+
 - Add bounded graph incidence, vertex-simple combinatorial closed wires and
   directed edge-use counts; shell and solid validity remain future work.
+- Add finite-control quadratic 3D Bézier curves with explicitly rounded,
+  fallible parameter evaluation and comparison-only control bounds.
 
 - Group faces with bridge excursions when each filtered boundary is empty or
   one simple cycle, retaining original half-edge ownership.

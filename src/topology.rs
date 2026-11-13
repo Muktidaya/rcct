@@ -12,6 +12,18 @@
 
 use std::fmt;
 
+mod scoped;
+pub use scoped::{
+    BoundaryGroupError, BoundaryGroupLimits, BoundaryGroupResource, DeclaredFaceBoundaries,
+    HandleError, ScopedEdgeId, ScopedEdgeUse, ScopedSnapshot, ScopedVertexId, ScopedWire,
+    ScopedWireError, SnapshotError,
+};
+mod links;
+pub use links::{
+    VertexLink, VertexLinkError, VertexLinkKind, VertexLinkLimits, VertexLinkResource, VertexLinks,
+    analyze_vertex_links,
+};
+
 /// An edge specified by its ordered, graph-local endpoint indices.
 /// Validation occurs when an incidence graph is constructed.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

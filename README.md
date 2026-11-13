@@ -62,9 +62,15 @@ order and direct component division.
 - [Numerical contract](docs/numerics.md): operation semantics, conditioning,
   exceptional inputs, and normalization limits.
 - [Checked spatial primitives](docs/spatial.md): finite 3D values, closed boxes,
-  and explicitly rounded line and plane evaluations.
-- [Combinatorial topology](docs/topology.md): bounded graph incidence,
-  directed vertex-simple wires and edge-use counts without geometric validity claims.
+  and explicitly rounded line, plane, and quadratic curve evaluations.
+- [Combinatorial topology](docs/topology.md): scoped identity, declared boundaries,
+  edge-use incidence and vertex-link diagnostics without geometric validity claims.
+- [Proposed polyhedral Boolean contract](docs/polyhedral-boolean-contract.md):
+  intended convex-input milestone, failure and validation boundaries.
+- [Raw segment and plane events](docs/segment-plane3.md): exact event classes
+  and retained original-support crossing witnesses.
+- [Exact 3D orientation](docs/orientation3.md): raw finite-input determinant
+  sign, fixed-width bounds and constructed-point limitations.
 - [Planar geometry slice](docs/planar.md): exact orientation, segment events,
   and simple closed-wire validation contracts.
 - [Segment event witnesses](docs/crossing-witness.md): exact proper-crossing,
@@ -150,6 +156,8 @@ cargo +1.99.1 test --locked --all-features
 RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --all-features
 python3 tools/generate_numeric_fixtures.py --check
 python3 tools/generate_orientation_fixtures.py --check
+python3 tools/generate_orientation3_fixtures.py --check
+python3 tools/generate_segment_plane_fixtures.py --check
 python3 tools/generate_crossing_order_fixtures.py --check
 python3 tools/generate_parameter_enclosures.py --check
 python3 tools/generate_crossing_coordinate_enclosures.py --check
@@ -157,6 +165,7 @@ python3 tools/generate_crossing_point_order.py --check
 python3 tools/generate_constructed_orientation.py --check
 python3 tools/generate_span_query_fixtures.py --check
 python3 tools/generate_boolean_triangle_fixture.py --check
+python3 tools/generate_bezier3_fixtures.py --check
 python3 tools/check_package.py
 ```
 

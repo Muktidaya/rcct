@@ -23,3 +23,20 @@ would be finite. Finite values can underflow or have the wrong sign through
 rounding and cancellation. Line parameters are only approximately distances;
 plane offsets are neither exact distances nor reliable side/incidence predicates.
 Algorithms needing topology must use a separately justified robust predicate.
+
+## Quadratic Bézier evaluation
+
+`QuadraticBezier3` stores three checked finite controls, including coincident or
+collinear controls. Its control bounds enclose the exact real quadratic curve on
+`[0, 1]`; these comparison-only bounds are not a promise about rounded results.
+The type supplies neither exact curves, derivative or arc-length operations,
+intersections, robust incidence, nor topological validity.
+
+Finite parameters outside `[0, 1]` and nonfinite parameters have distinct typed
+errors. At either endpoint the stored endpoint is returned verbatim, including
+signed-zero bits. For an interior parameter the implementation applies two levels
+of de Casteljau interpolation. Each coordinate blend evaluates `w = 1 - t`,
+then the separately rounded products `w*a` and `t*b`, then their separately
+rounded sum; nonfinite intermediates or results return an error. Rounding,
+underflow and cancellation may lose detail, even when the exact curve is finite.
+The fixed-size algorithm allocates no heap storage and applies no tolerance.
