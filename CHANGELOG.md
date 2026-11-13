@@ -2,6 +2,9 @@
 
 ## 0.2.0-alpha.1 (unreleased)
 
+- Add exact 3D orientation for four finite binary64 input points using bounded
+  integer arithmetic; general constructed-point predicates remain future work.
+
 - Add bounded graph incidence, vertex-simple combinatorial closed wires and
   directed edge-use counts; shell and solid validity remain future work.
 

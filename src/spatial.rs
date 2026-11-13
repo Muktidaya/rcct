@@ -234,3 +234,37 @@ impl Plane3 {
         }
     }
 }
+
+/// Exact orientation of four finite raw-input points in a right-handed frame.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Orientation3 {
+    /// `(b-a) × (c-a) · (d-a)` is strictly negative.
+    Negative,
+    /// The determinant is exactly zero for the represented coordinates.
+    Coplanar,
+    /// `(b-a) × (c-a) · (d-a)` is strictly positive.
+    Positive,
+}
+
+/// Returns the exact orientation of four finite binary64 input points.
+///
+/// The sign of `(b-a) × (c-a) · (d-a)` is computed from the exact dyadic
+/// values of the stored coordinates without floating-point subtraction,
+/// multiplication, tolerances or rounding. The origin and positive x, y, z
+/// axis points in that order produce [`Orientation3::Positive`]. Signed zeros
+/// denote the same exact value. This predicate accepts raw finite points only;
+/// it does not accept retained constructed rational or algebraic points and
+/// does not construct intersections or establish solid validity. Its fixed-width
+/// integer arithmetic has a bounded amount of work and allocates no heap.
+pub fn orient3d(
+    a: FinitePoint3,
+    b: FinitePoint3,
+    c: FinitePoint3,
+    d: FinitePoint3,
+) -> Orientation3 {
+    match crate::planar::orient3d_exact(a.get(), b.get(), c.get(), d.get()) {
+        std::cmp::Ordering::Less => Orientation3::Negative,
+        std::cmp::Ordering::Equal => Orientation3::Coplanar,
+        std::cmp::Ordering::Greater => Orientation3::Positive,
+    }
+}

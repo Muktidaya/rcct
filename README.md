@@ -65,6 +65,10 @@ order and direct component division.
   and explicitly rounded line and plane evaluations.
 - [Combinatorial topology](docs/topology.md): bounded graph incidence,
   directed vertex-simple wires and edge-use counts without geometric validity claims.
+- [Proposed polyhedral Boolean contract](docs/polyhedral-boolean-contract.md):
+  intended convex-input milestone, failure and validation boundaries.
+- [Exact 3D orientation](docs/orientation3.md): raw finite-input determinant
+  sign, fixed-width bounds and constructed-point limitations.
 - [Planar geometry slice](docs/planar.md): exact orientation, segment events,
   and simple closed-wire validation contracts.
 - [Segment event witnesses](docs/crossing-witness.md): exact proper-crossing,
@@ -150,6 +154,7 @@ cargo +1.99.1 test --locked --all-features
 RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --all-features
 python3 tools/generate_numeric_fixtures.py --check
 python3 tools/generate_orientation_fixtures.py --check
+python3 tools/generate_orientation3_fixtures.py --check
 python3 tools/generate_crossing_order_fixtures.py --check
 python3 tools/generate_parameter_enclosures.py --check
 python3 tools/generate_crossing_coordinate_enclosures.py --check
