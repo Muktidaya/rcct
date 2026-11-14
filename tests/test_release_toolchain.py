@@ -106,6 +106,18 @@ class ReleaseToolchainTests(unittest.TestCase):
             self.assertIn('1.100.0', pin.read_text(encoding='utf-8'))
             self.assertEqual(provenance.read_text(encoding='utf-8'), 'unchanged\n')
 
+    def test_update_rejects_comment_with_noncanonical_actual_channel(self):
+        with tempfile.TemporaryDirectory() as directory:
+            pin, provenance = Path(directory) / 'pin', Path(directory) / 'provenance'
+            text = "# channel = \"1.100.0\"\n[toolchain]\nchannel = '1.100.0'\n"
+            pin.write_text(text, encoding='utf-8')
+            provenance.write_text('unchanged\n', encoding='utf-8')
+            with patch.object(MODULE, 'PIN', pin), patch.object(MODULE, 'PROVENANCE', provenance), patch.object(MODULE, 'official', return_value=('1.101.0', '2026-12-01', 'a' * 64)), patch.object(sys, 'argv', ['tool', '--update']), contextlib.redirect_stdout(io.StringIO()):
+                with self.assertRaises(ValueError):
+                    MODULE.main()
+            self.assertEqual(pin.read_text(encoding='utf-8'), text)
+            self.assertEqual(provenance.read_text(encoding='utf-8'), 'unchanged\n')
+
     def test_update_scope_and_downgrade_refusal(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

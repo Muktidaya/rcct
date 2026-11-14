@@ -21,7 +21,6 @@ PROVENANCE = ROOT / 'docs/toolchain-provenance.md'
 BASE = 'https://static.rust-lang.org/dist/'
 MANIFEST = 'channel-rust-stable.toml'
 MAX_BYTES = 4 * 1024 * 1024
-VERSION = r'([0-9]+\.[0-9]+\.[0-9]+)'
 
 
 def valid_version(value):
@@ -99,10 +98,20 @@ def main():
     if tuple(map(int, stable.split('.'))) < tuple(map(int, pin.split('.'))):
         raise SystemExit('refusing to downgrade the project pin')
     old = PIN.read_text(encoding='utf-8')
-    needle = 'channel = "' + pin + '"'
-    if old.count(needle) != 1:
+    # Only edit an unambiguous canonical channel line inside [toolchain].
+    section = re.search(r'^\[toolchain\][ \t]*$(.*?)(?=^\[|\Z)', old,
+                        re.MULTILINE | re.DOTALL)
+    line = re.compile(r'^channel = "' + re.escape(pin) + r'"$', re.MULTILINE)
+    if not section or len(line.findall(section.group(1))) != 1:
         raise ValueError('pin formatting is not supported for safe update')
-    new = old.replace(needle, 'channel = "' + stable + '"', 1)
+    body = line.sub('channel = "' + stable + '"', section.group(1), count=1)
+    new = old[:section.start(1)] + body + old[section.end(1):]
+    before = tomllib.loads(old)
+    proposed = tomllib.loads(new)
+    expected = tomllib.loads(old)
+    expected['toolchain']['channel'] = stable
+    if before['toolchain']['channel'] != pin or proposed != expected:
+        raise ValueError('proposed pin update changes unexpected metadata')
     old_provenance = PROVENANCE.read_text(encoding='utf-8')
     new_provenance = ('# Rust toolchain provenance\n\n'
                       'Project pin: `' + stable + '`\n\n'
