@@ -3,7 +3,8 @@
 This unreleased candidate combines the reviewed public integration checkpoint
 `19d8f581522f0f9b35623f909f976e118eaa38ca` with release-preparation metadata.
 The canonical public `root` was `c83f03a12fc7d6db323a1b5b94aa63308bbcff00`
-at preparation; no root update or publication is implied. This candidate
+at preparation and subsequently advanced to `fd65375947f5645729a0eee8ab3639de1863663d`.
+No package, tag or release publication is implied. This candidate
 contains the bounded planar, spatial and combinatorial topology capabilities
 and limitations documented in the integrated checkpoint. It does not include
 the separate private arithmetic/constructed-cut experiments, complete B-rep,
@@ -31,9 +32,12 @@ created by this preparation.
 This candidate proposes Rust 1.100.0 both as the declared minimum and the
 initial exact project pin. Raising the consumer floor from published 0.1.1's
 1.85 excludes Rust 1.85 through 1.99.x; a user's need for older support has not
-been established. This consequential policy needs review and exact-candidate
-validation. CI configures four platforms plus quality at the explicit pin; it
-has not run for this candidate. An older support claim requires a concrete
+been established. Local qualification passed on exact commit `fd65375947f5645729a0eee8ab3639de1863663d`
+with Rust 1.100.0, including 155 tests in each profile, package/downstream
+checks and an official manifest check. Its public [hosted run](https://github.com/Muktidaya/rcct/actions/runs/43565878750)
+passed quality but failed four platform packaging steps on generated Python
+bytecode. Those receipts do not qualify later commits, which require their own
+validation. An older support claim requires a concrete
 need and a separately tested lane, not inference from historical results.
 
 `tools/release_toolchain.py --check` checks official stable metadata; a
@@ -46,8 +50,8 @@ are not an independent signature. If the pin changes, separately review the
 minimum, workflow coverage, exact-version docs and diff. A metadata/network
 failure or malformed/mismatched checksum is not proof of the latest pin.
 
-Before root integration, verify actual remote destination/ancestry and clean
-canonical root, review this exact diff, and qualify the exact candidate.
+Before any further root integration, verify actual remote destination/ancestry
+and clean canonical root, review the exact diff, and qualify the exact candidate.
 Before any publication, complete separate release-scope, compatibility,
 provenance and platform review; confirm official stable, all fixture checks,
 formatting, warnings-denied lint/docs, debug/release, clean packaging and

@@ -145,7 +145,8 @@ The project pins an exact compiler in `rust-toolchain.toml` for reproducible
 build and release preparation. The current pin is recorded in the
 [toolchain provenance](docs/toolchain-provenance.md). The proposed 0.2.0
 `rust-version` is 1.100.0; this is a consumer compatibility change from
-0.1.1's 1.85 minimum and has not yet been qualified. The pin does not change
+0.1.1's 1.85 minimum. Local Rust 1.100.0 checks passed on `fd65375`;
+that evidence does not qualify later commits. The pin does not change
 the machine-wide default. Confirm official stable metadata at release time:
 
 ```sh
@@ -157,8 +158,9 @@ python3 tools/release_toolchain.py --update
 The update command changes only the project pin and provenance, not
 `rust-version`; review that separate compatibility decision and diff. If the
 minimum differs from the new pin, add a separately qualified minimum lane or
-revise the minimum before claiming support. Manifest and exact-candidate
-verification are pending.
+revise the minimum before claiming support. The official manifest check passed
+on `fd65375`; recheck it at release time. Its hosted run failed packaging on
+generated Python bytecode, so later fixes require their own qualification.
 
 ```sh
 cargo fmt --all -- --check
