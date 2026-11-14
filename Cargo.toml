@@ -10,7 +10,7 @@ documentation = "https://docs.rs/rcct"
 readme = "README.md"
 keywords = ["cad", "geometry", "occt", "brep"]
 categories = ["mathematics", "graphics"]
-include = ["src/**", "tests/**", "examples/**", "Cargo.toml", "Cargo.lock", "README.md", "CHANGELOG.md", "NOTICE.md", "LICENSE", "rust-toolchain.toml", "docs/**", "tools/**", "!**/__pycache__/**", "!**/*.pyc"]
+include = ["src/**", "tests/**", "examples/**", "Cargo.toml", "Cargo.lock", "README.md", "CHANGELOG.md", "NOTICE.md", "LICENSE.txt", "rust-toolchain.toml", "docs/**", "tools/**", "!**/__pycache__/**", "!**/*.pyc"]
 
 [dependencies]
 

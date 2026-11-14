@@ -206,7 +206,7 @@ qualification work for any regulated use.
 ## License and attribution
 
 Licensed under the **Apache License, Version 2.0** (`Apache-2.0`). See
-[LICENSE](LICENSE) and [NOTICE.md](NOTICE.md).
+[LICENSE.txt](LICENSE.txt) and [NOTICE.md](NOTICE.md).
 
 The initial implementation is original Rust code implementing standard
 Cartesian geometry. No OCCT source was copied, translated, or linked into it.

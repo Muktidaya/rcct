@@ -68,7 +68,7 @@ def main():
             extract(archive, temporary / "baseline")
         baseline = temporary / "baseline"
         source = ROOT / "tests" / "api_compat.rs"
-        for relative in ("LICENSE", "NOTICE.md", "README.md", "docs/numerics.md",
+        for relative in ("LICENSE.txt", "NOTICE.md", "README.md", "docs/numerics.md",
                          "tests/api_compat.rs", "tools/generate_numeric_fixtures.py",
                          "tools/generate_orientation_fixtures.py",
                          "tools/generate_crossing_order_fixtures.py",

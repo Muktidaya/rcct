@@ -3,7 +3,7 @@
 rcct
 Copyright 2026 rcct contributors
 
-Licensed under the Apache License, Version 2.0. See LICENSE.
+Licensed under the Apache License, Version 2.0. See LICENSE.txt.
 
 The initial Rust implementation provides standard elementary Cartesian geometry.
 No OCCT source, tests, datasets, logos, or other implementation assets were
