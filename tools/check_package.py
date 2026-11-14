@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Test the shipped crate and one frozen downstream consumer, without publishing.
 
-Requires Python 3.9+, Cargo/rustup, Git, and the local v0.1.0 tag (CI fetches tags).
+Requires Python 3.11+, Cargo/rustup, Git, and the local v0.1.0 tag (CI fetches tags).
 Run: python3 tools/check_package.py
 For an intentionally uncommitted development candidate, add --allow-dirty.
 All builds use offline dependency resolution: the runtime must remain dependency-free.

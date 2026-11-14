@@ -5,7 +5,7 @@ not qualify the unreleased 0.2.0 preparation candidate or its proposed Rust
 1.100.0 minimum. The current candidate requires its own exact-SHA checks.
 
 This is a reproducible acceptance record, not a proof or safety qualification.
-The production arithmetic and public API are unchanged from v0.1.0. Source
+In the historical 0.1.1 record, production arithmetic and the public API were unchanged from v0.1.0. Source
 compatibility and numerical results are separate questions; passing a consumer
 smoke test is not an exhaustive semver proof or bit-for-bit portability promise.
 

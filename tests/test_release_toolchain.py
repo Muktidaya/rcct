@@ -30,6 +30,66 @@ class ReleaseToolchainTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 MODULE.official()
 
+    def test_malformed_manifest_rejected_without_writes(self):
+        cases = [
+            b'date = "2026-11-12"\n[pkg.rust]\nversion = "1.100.0"\ninvalid',
+            b'date = "2026-11-12"\n[pkg.rust]\nversion = "1.100.0"\nversion = "1.100.1"\n',
+            b'date = 2026-11-12\n[pkg.rust]\nversion = "1.100.0"\n',
+            b'date = "2026-02-30"\n[pkg.rust]\nversion = "1.100.0"\n',
+            b'date = "2026-11-12"\n[pkg.rust]\nversion = 100\n',
+            b'date = "2026-11-12"\n[pkg.rust]\nversion = "1.100.0-beta"\n',
+        ]
+        with tempfile.TemporaryDirectory() as directory:
+            pin, provenance = Path(directory) / 'pin', Path(directory) / 'provenance'
+            pin.write_text('[toolchain]\nchannel = "1.100.0"\n')
+            provenance.write_text('unchanged\n')
+            for data in cases:
+                checksum = (hashlib.sha256(data).hexdigest() + '  channel-rust-stable.toml\n').encode()
+                with self.subTest(data=data), patch.object(MODULE, 'PIN', pin), patch.object(MODULE, 'PROVENANCE', provenance), patch.object(MODULE, 'download', side_effect=[data, checksum]), patch.object(sys, 'argv', ['tool', '--update']):
+                    with self.assertRaises(ValueError):
+                        MODULE.main()
+                self.assertEqual(pin.read_text(), '[toolchain]\nchannel = "1.100.0"\n')
+                self.assertEqual(provenance.read_text(), 'unchanged\n')
+
+    def test_invalid_pin_rejected_before_network(self):
+        cases = ['[toolchain]\nchannel = "1.100.0"\nbad',
+                 '[toolchain]\nchannel = "1.100.0"\nchannel = "1.100.1"\n',
+                 '[toolchain]\nchannel = 100\n',
+                 '[toolchain]\nchannel = "1.100.0-beta"\n']
+        with tempfile.TemporaryDirectory() as directory:
+            pin, provenance = Path(directory) / 'pin', Path(directory) / 'provenance'
+            provenance.write_text('unchanged\n')
+            for text in cases:
+                pin.write_text(text)
+                with self.subTest(text=text), patch.object(MODULE, 'PIN', pin), patch.object(MODULE, 'PROVENANCE', provenance), patch.object(MODULE, 'official', side_effect=AssertionError('network called')), patch.object(sys, 'argv', ['tool', '--update']):
+                    with self.assertRaises(ValueError):
+                        MODULE.main()
+                self.assertEqual(pin.read_text(), text)
+                self.assertEqual(provenance.read_text(), 'unchanged\n')
+
+    def test_redirect_size_network_and_checksum_failures(self):
+        request = MODULE.urllib.request.Request(MODULE.BASE + MODULE.MANIFEST)
+        with self.assertRaises(MODULE.urllib.error.HTTPError):
+            MODULE.NoRedirect().redirect_request(request, None, 302, 'redirect', {}, 'https://example.com/')
+        with tempfile.TemporaryDirectory() as directory:
+            pin, provenance = Path(directory) / 'pin', Path(directory) / 'provenance'
+            pin.write_text('[toolchain]\nchannel = "1.100.0"\n')
+            provenance.write_text('unchanged\n')
+            for failure in (OSError('network unavailable'), ValueError('official metadata exceeds size limit'), ValueError('checksum mismatch')):
+                with self.subTest(failure=failure), patch.object(MODULE, 'PIN', pin), patch.object(MODULE, 'PROVENANCE', provenance), patch.object(MODULE, 'download', side_effect=failure), patch.object(sys, 'argv', ['tool', '--update']):
+                    with self.assertRaises(type(failure)):
+                        MODULE.main()
+                self.assertEqual(pin.read_text(), '[toolchain]\nchannel = "1.100.0"\n')
+                self.assertEqual(provenance.read_text(), 'unchanged\n')
+        class Response:
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def read(self, size): return b'x' * size
+        with patch.object(MODULE.urllib.request, 'build_opener') as opener:
+            opener.return_value.open.return_value = Response()
+            with self.assertRaises(ValueError):
+                MODULE.download(MODULE.MANIFEST)
+
     def test_print_and_check_do_not_write(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

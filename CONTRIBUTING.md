@@ -75,3 +75,6 @@ introduce a native dependency, or imply safety qualification as an incidental
 change. Supply-chain review, fuzzing, formal methods, independent audit, and
 application-specific qualification are possible future work, not completed
 properties of this scaffold.
+
+The release pin tool and package checker require Python 3.11 or later;
+individual fixture generators retain their documented Python requirements.

@@ -185,7 +185,8 @@ CI is configured for the explicit project pin across Linux, macOS and Windows,
 including Linux/macOS ARM64, with debug and release tests. Earlier verification
 records apply only to their exact revisions; this candidate needs its own
 qualification. No OCCT installation is required. Fixture, package and pin tools
-use Python 3.9+ standard-library modules.
+use Python 3.9+ standard-library modules. The package checker and release
+pin tool require Python 3.11+ for the standard-library TOML parser.
 
 ## Assurance boundaries
 

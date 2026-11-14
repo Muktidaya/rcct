@@ -7,9 +7,11 @@ Rust distribution host; --update changes only the project pin and provenance.
 """
 import argparse
 import difflib
+import datetime
 import hashlib
 from pathlib import Path
 import re
+import tomllib
 import urllib.error
 import urllib.request
 
@@ -22,12 +24,18 @@ MAX_BYTES = 4 * 1024 * 1024
 VERSION = r'([0-9]+\.[0-9]+\.[0-9]+)'
 
 
+def valid_version(value):
+    return isinstance(value, str) and re.fullmatch(
+        r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)", value
+    ) is not None
+
+
 def read_pin():
-    text = PIN.read_text(encoding='utf-8')
-    matches = re.findall(r'^channel = "' + VERSION + r'"$', text, re.MULTILINE)
-    if len(matches) != 1:
-        raise ValueError('expected exactly one explicit project toolchain channel')
-    return matches[0]
+    document = tomllib.loads(PIN.read_text(encoding='utf-8'))
+    toolchain = document.get('toolchain')
+    if not isinstance(toolchain, dict) or not valid_version(toolchain.get('channel')):
+        raise ValueError('expected a stable numeric project toolchain channel')
+    return toolchain['channel']
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -52,15 +60,23 @@ def official():
     digest = hashlib.sha256(data).hexdigest()
     if not match or match.group(1) != digest:
         raise ValueError('official manifest checksum mismatch or malformed checksum')
-    text = data.decode('utf-8')
-    section = re.search(r'^\[pkg\.rust\]\s*$(.*?)(?=^\[|\Z)', text, re.MULTILINE | re.DOTALL)
-    date = re.search(r'^date = "(\d{4}-\d{2}-\d{2})"$', text, re.MULTILINE)
-    if not section or not date:
-        raise ValueError('missing stable rust package or release date')
-    version = re.search(r'^version = "' + VERSION + r'(?: [^"\n]+)?"$', section.group(1), re.MULTILINE)
-    if not version:
-        raise ValueError('missing stable Rust version')
-    return version.group(1), date.group(1), digest
+    document = tomllib.loads(data.decode('utf-8'))
+    date = document.get('date')
+    if not isinstance(date, str):
+        raise ValueError('missing or invalid stable release date')
+    try:
+        if datetime.date.fromisoformat(date).isoformat() != date:
+            raise ValueError('noncanonical stable release date')
+    except ValueError as error:
+        raise ValueError('invalid stable release date') from error
+    package = document.get('pkg')
+    rust = package.get('rust') if isinstance(package, dict) else None
+    version = rust.get('version') if isinstance(rust, dict) else None
+    match = re.fullmatch(r'([^ ]+)(?: \([^()\n]+\))?', version) if isinstance(version, str) else None
+    if not match or not valid_version(match.group(1)):
+        raise ValueError('missing or invalid stable Rust version')
+    return match.group(1), date, digest
+
 
 
 def main():
@@ -83,7 +99,10 @@ def main():
     if tuple(map(int, stable.split('.'))) < tuple(map(int, pin.split('.'))):
         raise SystemExit('refusing to downgrade the project pin')
     old = PIN.read_text(encoding='utf-8')
-    new = old.replace('channel = "' + pin + '"', 'channel = "' + stable + '"', 1)
+    needle = 'channel = "' + pin + '"'
+    if old.count(needle) != 1:
+        raise ValueError('pin formatting is not supported for safe update')
+    new = old.replace(needle, 'channel = "' + stable + '"', 1)
     old_provenance = PROVENANCE.read_text(encoding='utf-8')
     new_provenance = ('# Rust toolchain provenance\n\n'
                       'Project pin: `' + stable + '`\n\n'

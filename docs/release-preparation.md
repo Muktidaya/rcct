@@ -57,3 +57,6 @@ No automatic release or publication is implied by a green build.
 The update writes the pin and provenance sequentially; interruption can leave a
 partial update. Inspect both files and reconcile them before any build or release.
 A later pin refresh does not itself validate or raise the declared consumer floor.
+
+The release pin tool and package checker require Python 3.11 or later for
+standard-library TOML parsing; this does not change individual fixture requirements.
