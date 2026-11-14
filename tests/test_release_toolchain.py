@@ -14,6 +14,7 @@ from unittest.mock import patch
 PATH = Path(__file__).resolve().parents[1] / 'tools/release_toolchain.py'
 SPEC = importlib.util.spec_from_file_location('release_toolchain', PATH)
 MODULE = importlib.util.module_from_spec(SPEC)
+sys.dont_write_bytecode = True
 SPEC.loader.exec_module(MODULE)
 
 

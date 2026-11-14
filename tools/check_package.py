@@ -12,8 +12,10 @@ import argparse
 import io
 import json
 import os
+import sys
 from pathlib import Path
 
+sys.dont_write_bytecode = True
 from release_toolchain import read_pin
 import shutil
 import subprocess
