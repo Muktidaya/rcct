@@ -1,8 +1,8 @@
 [package]
 name = "rcct"
-version = "0.2.0-alpha.1"
+version = "0.2.0"
 edition = "2024"
-rust-version = "1.99.1"
+rust-version = "1.100.0"
 description = "Pure-Rust geometry foundations for an independent CAD kernel"
 license = "Apache-2.0"
 repository = "https://github.com/Muktidaya/rcct"

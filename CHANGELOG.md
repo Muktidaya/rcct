@@ -1,6 +1,14 @@
 # Changelog
 
-## 0.2.0-alpha.1 (unreleased)
+## 0.2.0 (unreleased release preparation)
+
+- Prepare the integrated candidate for 0.2.0 without publishing a package.
+- Propose Rust 1.100.0 as the minimum and exact project pin; this excludes
+  older supported 0.1.1 compilers and requires exact-candidate qualification.
+- The bounded alpha features below remain limited as documented; complete
+  B-rep, general 3D Booleans and a complete CAD kernel are not claimed.
+
+## 0.2.0-alpha.1 (historical unreleased development record)
 
 - Add process-local snapshot-scoped handles, scoped wires and bounded declared
   boundary groups without claiming geometric or face validity.

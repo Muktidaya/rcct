@@ -3,7 +3,7 @@
 """Test the shipped crate and one frozen downstream consumer, without publishing.
 
 Requires Python 3.9+, Cargo/rustup, Git, and the local v0.1.0 tag (CI fetches tags).
-Run: python3 tools/check_package.py --toolchain 1.99.1
+Run: python3 tools/check_package.py
 For an intentionally uncommitted development candidate, add --allow-dirty.
 All builds use offline dependency resolution: the runtime must remain dependency-free.
 Temporary extraction and downstream builds are isolated from the source checkout.
@@ -13,6 +13,8 @@ import io
 import json
 import os
 from pathlib import Path
+
+from release_toolchain import read_pin
 import shutil
 import subprocess
 import tarfile
@@ -41,7 +43,7 @@ def extract(archive, destination):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--toolchain", default="1.99.1")
+    parser.add_argument("--toolchain", default=read_pin())
     parser.add_argument("--allow-dirty", action="store_true")
     args = parser.parse_args()
     cargo = ["cargo", "+" + args.toolchain]
@@ -73,7 +75,12 @@ def main():
                          "tools/generate_crossing_point_order.py",
                          "tools/generate_constructed_orientation.py",
                          "tools/generate_span_query_fixtures.py",
-                         "tools/generate_boolean_triangle_fixture.py"):
+                         "tools/generate_boolean_triangle_fixture.py",
+                         "tools/generate_orientation3_fixtures.py",
+                         "tools/generate_segment_plane_fixtures.py",
+                         "tools/generate_bezier3_fixtures.py",
+                         "tools/release_toolchain.py", "rust-toolchain.toml",
+                         "docs/toolchain-provenance.md", "tests/test_release_toolchain.py"):
             if (packaged / relative).read_bytes() != (ROOT / relative).read_bytes():
                 raise SystemExit("packaged file differs from checkout: " + relative)
         # Override any inherited target directory so packaged/downstream evidence

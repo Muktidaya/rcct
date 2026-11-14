@@ -3,7 +3,7 @@
 An independent **pure-Rust CAD-kernel project**, starting with a small geometry
 foundation and using Open CASCADE Technology (OCCT) as a functional reference.
 
-**Status: early development; the current unreleased package is `0.2.0-alpha.1`.**
+**Status: unreleased `0.2.0` release preparation.**
 The latest published version remains `0.1.1`. The crate provides elementary 3D
 geometry plus a first checked planar geometry and topology slice. It is not a
 complete CAD kernel, is not API-compatible with OCCT, and cannot import, model,
@@ -12,9 +12,12 @@ build scripts, or third-party Rust dependencies.
 
 ## Use
 
+The 0.2.0 checkout has not been published. For local development, reference
+the checkout by path:
+
 ```toml
 [dependencies]
-rcct = "0.2.0-alpha.1"
+rcct = { path = "../rcct" }
 ```
 
 ```rust
@@ -111,7 +114,7 @@ published crate and does not yet document this unreleased candidate.
 
 ## Scope and development direction
 
-The current release is an original Rust implementation of elementary geometry.
+This preparation checkout is an original Rust implementation of geometry foundations.
 OCCT is a functional reference, not a runtime dependency or an architectural
 constraint. The goal is a Rust-native design that can improve on reference
 implementations rather than reproduce their source, API, or internal structure.
@@ -120,8 +123,7 @@ implementations rather than reproduce their source, API, or internal structure.
   contracts, and independent verification; it supports Rust 1.85.
 - **v0.2.0 in progress:** a first bounded slice adds checked finite planar
   points and segments, exact orientation, exact segment-intersection event
-  classification, and simple closed-wire validation. The prerelease declares
-  Rust 1.99.1 as its minimum. A bounded raw-segment graph retains shared points,
+  classification, and simple closed-wire validation. A bounded raw-segment graph retains shared points,
   edge pieces and source traversals. A separate stage groups simple walks into
   faces; per-group winding supports bounded face-based 2D Boolean selection.
 - **Remaining v0.2.0 scope:** broader geometry, B-rep, and Boolean operations.
@@ -139,20 +141,30 @@ LGPL-licensed OCCT source. See
 
 ## Build and check
 
-The repository pins **Rust 1.99.1** as both its development toolchain and
-current package minimum, verified on 2026-11-09 against the [official stable
-channel manifest](https://static.rust-lang.org/dist/channel-rust-stable.toml).
-`rust-toolchain.toml` selects the minimal profile plus `rustfmt` and Clippy;
-ordinary `cargo` commands use that project toolchain without changing the
-machine-wide default. Published v0.1.1 retains its Rust 1.85 minimum; the
-unreleased 0.2.0 prerelease intentionally raises its minimum to Rust 1.99.1.
+The project pins an exact compiler in `rust-toolchain.toml` for reproducible
+build and release preparation. The current pin is recorded in the
+[toolchain provenance](docs/toolchain-provenance.md). The proposed 0.2.0
+`rust-version` is 1.100.0; this is a consumer compatibility change from
+0.1.1's 1.85 minimum and has not yet been qualified. The pin does not change
+the machine-wide default. Confirm official stable metadata at release time:
+
+```sh
+python3 tools/release_toolchain.py --check
+# Only when deliberately refreshing the pin:
+python3 tools/release_toolchain.py --update
+```
+
+The update command changes only the project pin and provenance, not
+`rust-version`; review that separate compatibility decision and diff. If the
+minimum differs from the new pin, add a separately qualified minimum lane or
+revise the minimum before claiming support. Manifest and exact-candidate
+verification are pending.
 
 ```sh
 cargo fmt --all -- --check
 cargo clippy --all-targets --all-features -- -D warnings
 cargo test --locked --all-features
 cargo test --locked --all-features --release
-cargo +1.99.1 test --locked --all-features
 RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --all-features
 python3 tools/generate_numeric_fixtures.py --check
 python3 tools/generate_orientation_fixtures.py --check
@@ -169,13 +181,11 @@ python3 tools/generate_bezier3_fixtures.py --check
 python3 tools/check_package.py
 ```
 
-CI configures pinned Rust 1.99.1 and rolling stable across Linux, macOS, and
-Windows, including Linux/macOS ARM64, with debug and release tests. The previous
-v0.1.1 verification record covers its exact published revision; this candidate
-must establish its own CI evidence. See the [verification record](docs/verification.md).
-This crate does
-not require an OCCT installation or a C++ toolchain. The fixture generator and
-package/downstream checker use Python 3.9+ standard-library tools only.
+CI is configured for the explicit project pin across Linux, macOS and Windows,
+including Linux/macOS ARM64, with debug and release tests. Earlier verification
+records apply only to their exact revisions; this candidate needs its own
+qualification. No OCCT installation is required. Fixture, package and pin tools
+use Python 3.9+ standard-library modules.
 
 ## Assurance boundaries
 
@@ -185,8 +195,8 @@ qualification, formal verification, independent security audit, or CAD-kernel
 validation. Do not infer any such assurance from its tests or its OCCT target.
 
 The development direction is to make numerical assumptions, source provenance,
-and operation-specific acceptance evidence traceable. Current tests cover the
-small geometry API only. Higher-level algorithms will need their own error
+and operation-specific acceptance evidence traceable. Current tests cover the documented bounded geometry, predicate, and topology
+slices; they do not establish general CAD or solid validity. Higher-level algorithms will need their own error
 analysis, degeneracy cases, differential checks where appropriate, and explicit
 qualification work for any regulated use.
 

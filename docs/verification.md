@@ -1,4 +1,8 @@
-# v0.1.1 verification record
+# Historical verification records
+
+This record describes the named historical revisions and toolchains. It does
+not qualify the unreleased 0.2.0 preparation candidate or its proposed Rust
+1.100.0 minimum. The current candidate requires its own exact-SHA checks.
 
 This is a reproducible acceptance record, not a proof or safety qualification.
 The production arithmetic and public API are unchanged from v0.1.0. Source
@@ -95,7 +99,7 @@ or remote CI execution follows from running these commands.
 
 ## Hosted matrix and remaining gates
 
-The workflow configures both profiles and package/downstream checks for:
+The historical workflow configured both profiles and package/downstream checks for:
 
 | Hosted runner | Architecture | Toolchains |
 | --- | --- | --- |
@@ -125,12 +129,12 @@ architectures, changed floating-point modes, and broader Rust versions are not
 established by this record.
 
 B-rep, Boolean operations, a broad geometry API, and the required Rust 1.99.1
-baseline belong to the planned v0.2.0 scope. This release establishes only the
-current primitive-level contracts and finite verification evidence. Formal
+baseline belong to the planned v0.2.0 scope. That historical record establishes
+only its primitive-level contracts and finite verification evidence. Formal
 proofs, adaptive/exact geometric predicates, security audit and application-
 specific safety qualification remain outside this evidence.
 
-## 0.2.0-alpha.1 development slice
+## Historical 0.2.0-alpha.1 development slice
 
 The candidate starts from the verified `root` commit
 `c83f03a12fc7d6db323a1b5b94aa63308bbcff00` (2026-11-09). The package version
