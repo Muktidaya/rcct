@@ -3,10 +3,14 @@
 //! Checked 3D primitives and closed axis-aligned bounds.
 //!
 //! Finite storage and comparisons do not establish robust geometric incidence.
-//! Line evaluation and plane offset use separately rounded `f64` arithmetic;
-//! their results are not exact predicates. Frames and units remain caller-owned.
-//! Equality compares stored representations, not geometric equivalence.
-//! This module does not provide intersections, topology, or solid modeling.
+//! [`Line3`] evaluation and [`Plane3`] offset use separately rounded `f64`
+//! arithmetic; their results are not exact predicates. For finite raw inputs,
+//! [`orient3d`] gives exact orientation and [`RawPlane3::intersect_segment`]
+//! classifies a segment/plane intersection with a retained proper-crossing
+//! witness. It does not construct the crossing coordinates or accept arbitrary
+//! constructed points. Frames and units remain caller-owned; equality compares
+//! stored representations rather than geometric equivalence. This module does
+//! not provide topology or solid modeling.
 
 use crate::gp::{Point3, UnitDirection3};
 use std::fmt;
