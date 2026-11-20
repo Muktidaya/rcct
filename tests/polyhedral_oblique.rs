@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
+use std::collections::{BTreeMap, BTreeSet};
+
 use rcct::polyhedral::{
     ConvexSolid, Operation3, Plane3h, PolyhedralError, PolyhedralWork, SolidBoundary, boolean3,
 };
@@ -36,8 +38,7 @@ fn scaled_uvw(vertex: [(i128, i128); 3], scale: i128) -> [i128; 3] {
     [x - y - z, y + z, -z]
 }
 
-#[test]
-fn simplex_crosses_six_cube_edges_after_orientation_reversal() {
+fn reflected_cube_and_simplex() -> (ConvexSolid, ConvexSolid) {
     let cube = admit_in_frame(&[
         [-1, 0, 0, 0],
         [1, 0, 0, -1],
@@ -49,6 +50,12 @@ fn simplex_crosses_six_cube_edges_after_orientation_reversal() {
     .unwrap();
     let simplex =
         admit_in_frame(&[[-1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [2, 2, 2, -3]]).unwrap();
+    (cube, simplex)
+}
+
+#[test]
+fn simplex_crosses_six_cube_edges_after_orientation_reversal() {
+    let (cube, simplex) = reflected_cube_and_simplex();
     // The simplex has volume (3/2)^3 / 6 = 9/16. Outside the cube it
     // has three disjoint tips, each a translated simplex of volume (1/2)^3 / 6.
     let core = apply(&cube, &simplex, Operation3::Intersection);
@@ -74,6 +81,79 @@ fn simplex_crosses_six_cube_edges_after_orientation_reversal() {
         (1, 2),
         1,
     );
+}
+
+#[test]
+fn constructed_corner_shares_one_vertex_across_every_incident_seam() {
+    let (cube, simplex) = reflected_cube_and_simplex();
+    for (a, b) in [(&cube, &simplex), (&simplex, &cube)] {
+        let result = apply(a, b, Operation3::Intersection);
+        // At (u,v,w)=(0,1/2,1), the active outward supports are -u=0,
+        // w-1=0 and 2(u+v+w)-3=0. Express them in the reflected frame.
+        let supports = [[-1, 1, 1, 0], [0, 0, -1, -1], [2, 0, -2, -3]];
+        let event = [(1, 2), (3, 2), (-1, 1)];
+        let mut event_ids = Vec::new();
+        let mut slacks = Vec::new();
+        for id in 0..result.vertex_count() {
+            let point = result.vertex(id).unwrap();
+            if point == event {
+                event_ids.push(id);
+            }
+            // A separate scale per vertex permits rational seam subdivisions.
+            let scale = point
+                .iter()
+                .map(|&(_, d)| d)
+                .try_fold(1, i128::checked_mul)
+                .unwrap();
+            let [x, y, z] = point.map(|(n, d)| n.checked_mul(scale / d).unwrap());
+            let slack = supports.map(|plane| {
+                plane
+                    .into_iter()
+                    .zip([x, y, z, scale])
+                    .try_fold(0i128, |sum, (c, h)| sum.checked_sub(h.checked_mul(c)?))
+                    .expect("exact support evaluation in the P11 fixture")
+            });
+            assert!(slack.iter().all(|&s| s >= 0));
+            slacks.push(slack);
+        }
+        let &[event_id] = event_ids.as_slice() else {
+            panic!("expected exactly one vertex ID for the constructed corner, got {event_ids:?}");
+        };
+        // All three slacks are nonnegative on every convex patch. Only this
+        // vertex has all three zero, so a patch can contain the corner only
+        // by listing it. Record the incoming and outgoing edge of each use.
+        let mut seams = BTreeMap::<usize, Vec<(usize, bool)>>::new();
+        for face in 0..result.face_count() {
+            let ids = result.face_vertices(face).unwrap();
+            let Some(i) = ids.iter().position(|&id| id == event_id) else {
+                continue;
+            };
+            assert_eq!(ids.iter().filter(|&&id| id == event_id).count(), 1);
+            let plane = result.face_plane(face).unwrap().coefficients();
+            let support = supports.iter().position(|&p| p == plane).unwrap();
+            let before = ids[(i + ids.len() - 1) % ids.len()];
+            let after = ids[(i + 1) % ids.len()];
+            seams.entry(before).or_default().push((support, true));
+            seams.entry(after).or_default().push((support, false));
+        }
+
+        let mut creases = BTreeSet::new();
+        for (neighbor, uses) in seams {
+            let &[(p, incoming), (q, other_incoming)] = uses.as_slice() else {
+                panic!("seam {event_id}–{neighbor} has {uses:?}");
+            };
+            assert_ne!(incoming, other_incoming, "seam {event_id}–{neighbor}");
+            for (i, &s) in slacks[neighbor].iter().enumerate() {
+                assert_eq!(s == 0, i == p || i == q, "seam {event_id}–{neighbor}");
+            }
+            if p != q {
+                assert!(creases.insert((p.min(q), p.max(q))));
+            }
+        }
+        // Coplanar subdivision seams are allowed. The three true crease
+        // rays each join the independently expected pair of supports once.
+        assert_eq!(creases, BTreeSet::from([(0, 1), (0, 2), (1, 2)]));
+    }
 }
 
 #[test]

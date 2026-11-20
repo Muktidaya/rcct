@@ -778,6 +778,58 @@ fn crossing_parity(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
+
+    #[test]
+    fn cancellation_during_interior_sample_search_retains_work() {
+        let points = [[0, 0, 0], [1, 0, 0], [2, 0, 0], [2, 1, 0]].map(|p| p.map(Q::int));
+        let plane = Plane3h::from_coefficients([0, 0, 1, 0]).unwrap();
+        let flag = AtomicBool::new(false);
+        let mut meter = PolyhedralWork::new(1_000, 0).with_cancellation(&flag);
+        let before = meter.remaining();
+        // The third point is collinear. The search must consider a fourth
+        // point after the first candidate has already consumed work.
+        let candidates = points.into_iter().inspect(|p| {
+            if *p == points[3] {
+                flag.store(true, AtomicOrdering::Relaxed);
+            }
+        });
+        assert_eq!(
+            interior_sample(plane, candidates, &mut meter),
+            Err(PolyhedralError::Cancelled)
+        );
+        assert!(meter.remaining().0 < before.0);
+        flag.store(false, AtomicOrdering::Relaxed);
+        let recovered = interior_sample(plane, points.into_iter(), &mut meter).unwrap();
+        assert_eq!(recovered, [Q::ONE, Q::ratio(1, 3).unwrap(), Q::ZERO]);
+    }
+
+    #[test]
+    fn cancellation_during_facet_validation_retains_work() {
+        let points = [[0, 0, 0], [2, 0, 0], [0, 1, 0]].map(|p| p.map(Q::int));
+        let plane = Plane3h::from_coefficients([0, 0, 1, 0]).unwrap();
+        let flag = AtomicBool::new(false);
+        let mut meter = PolyhedralWork::new(1_000, 0).with_cancellation(&flag);
+        let before = meter.remaining();
+        // Reading the third vertex during an edge's side tests requests
+        // cancellation after validation has started. The real meter polls
+        // the flag at a subsequent checkpoint in this same call.
+        let result = check_facet(
+            plane,
+            points.len(),
+            |i| {
+                if i == 2 {
+                    flag.store(true, AtomicOrdering::Relaxed);
+                }
+                points[i]
+            },
+            &mut meter,
+        );
+        assert_eq!(result, Err(PolyhedralError::Cancelled));
+        assert!(meter.remaining().0 < before.0);
+        flag.store(false, AtomicOrdering::Relaxed);
+        check_facet(plane, points.len(), |i| points[i], &mut meter).unwrap();
+    }
 
     // A deliberately independent assembly path for invalid draft boundaries.
     fn tetrahedron(offset: i64, size: i64, inward: bool) -> Vec<Facet> {
