@@ -1,8 +1,13 @@
-# Historical verification records
+# Release verification records
 
-This record describes the named historical revisions and toolchains. It does
-not qualify the unreleased 0.2.0 preparation candidate or its proposed Rust
-1.100.0 minimum. The current candidate requires its own exact-SHA checks.
+The published 0.2.0 release used Rust 1.100.0 at commit
+`7bac8edb6a925b701ec5d1dfd04ebee249e8088f`. All five tag CI jobs passed,
+including debug and release tests, packaged downstream checks on four platforms,
+and the quality checks. The 19 bounded planar-solid acceptance cases cover the
+face domains in the [polyhedral contract](polyhedral-boolean-contract.md).
+[Tag workflow](https://github.com/Muktidaya/rcct/actions/runs/44743310354)
+
+The following records describe earlier revisions and their toolchains.
 
 This is a reproducible acceptance record, not a proof or safety qualification.
 In the historical 0.1.1 record, production arithmetic and the public API were unchanged from v0.1.0. Source

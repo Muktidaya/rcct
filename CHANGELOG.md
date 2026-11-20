@@ -1,6 +1,15 @@
 # Changelog
 
-## 0.2.0 (release candidate)
+## 0.2.1
+
+- Correct the README shipped with 0.2.0, which still described that version
+  as a release candidate and showed only a local path dependency. The README
+  now gives the crates.io dependency and separate source-checkout instructions.
+- Update the release and verification notes for the published 0.2.0 geometry
+  APIs. This documentation patch retains those APIs, their behavior and the
+  Rust 1.100.0 minimum.
+
+## 0.2.0 (published 2026-11-20)
 
 - Add an experimental `polyhedral` module for regularized union, intersection
   and difference of bounded convex halfspace solids. Plane coefficients are
@@ -22,7 +31,7 @@
 - Include bounded planar arrangements and face-based 2D Boolean selection,
   checked spatial primitives and raw-input predicates, and combinatorial
   boundary and incidence diagnostics.
-- Raise the development manifest's minimum Rust version from 1.85 to 1.100.0.
+- Raise the minimum supported Rust version from 1.85 to 1.100.0.
   Existing `rcct::gp` calls retain their 0.1.1 API.
 - Results are owned in memory. Curved or trimmed surface operations, exact
   close/reopen persistence and arbitrary nonconvex B-rep Booleans are outside

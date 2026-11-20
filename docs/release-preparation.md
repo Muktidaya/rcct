@@ -1,39 +1,37 @@
-# 0.2.0 integrated release preparation
+# 0.2 release record and preparation checks
 
-This unreleased candidate combines the reviewed public integration checkpoint
-`19d8f581522f0f9b35623f909f976e118eaa38ca` with release-preparation metadata.
-The canonical public `root` was `c83f03a12fc7d6db323a1b5b94aa63308bbcff00`
-at preparation and subsequently advanced to `fd65375947f5645729a0eee8ab3639de1863663d`.
-The release candidate adds convex halfspace Booleans, exact indexed planar
-boundaries and result reuse on the rectilinear and prismatic face domains.
+Version 0.2.0 was published from commit
+`7bac8edb6a925b701ec5d1dfd04ebee249e8088f` on November 20, 2026.
+The release added convex halfspace Booleans, exact indexed planar boundaries
+and result reuse on the rectilinear and prismatic face domains.
+[Source tag](https://github.com/Muktidaya/rcct/tree/v0.2.0) ·
+[Published crate](https://crates.io/crates/rcct/0.2.0)
+
 The 0.2.0 planar-solid milestone covers 19 acceptance cases (P01–P16 and
 P18–P20). P17 exact close/reopen persistence, curved or trimmed surface
 operations and arbitrary nonconvex B-rep Booleans are outside this release.
 The [polyhedral contract](polyhedral-boolean-contract.md) describes the three
 entry points and their arithmetic and resource limits.
 
-## Version-reference inventory
+Version 0.2.1 corrects the release and install documentation shipped in the
+0.2.0 archive. Both versions specify Rust 1.100.0 as the minimum. The
+manifest and lockfile identify the package version; the crate has no
+third-party dependencies.
 
-* `Cargo.toml` and `Cargo.lock` identify proposed `0.2.0`; the lock has no
-  third-party dependencies. Proposed `rust-version = 1.100.0` is a consumer
-  minimum change, distinct from the exact project build pin.
-* The README uses a local path for the unpublished candidate. The earlier
-  `0.2.0-alpha.1` changelog/verification passages, their 1.99.1 toolchain and
-  exact receipts describe previous development candidates; they are historical,
-  not support or qualification for this candidate.
-* The 0.1.1 and 0.1.0 changelog and verification entries, Rust 1.85 references,
-  hashes and CI receipts are historical. `tests/api_compat.rs`, `v0.1.0` Git tag
-  and `tools/check_package.py` intentionally preserve the old public-surface
-  comparison; generated consumer version 0.0.0 is not rcct's version.
-* Fixed fixture strings, mathematical bounds and unrelated Python/action/tool
-  versions are not package-version substitutions and remain unchanged.
+## Historical version references
+
+The integration checkpoint `19d8f581522f0f9b35623f909f976e118eaa38ca`
+and earlier verification records describe development revisions. The
+`0.2.0-alpha.1` changelog and verification entries record their own Rust
+1.99.1 toolchain. The 0.1.1 and 0.1.0 records document Rust 1.85.
+`tests/api_compat.rs` and `tools/check_package.py` retain the comparison with
+the public `v0.1.0` tag.
 
 ## Compiler and release gates
 
-This candidate proposes Rust 1.100.0 both as the declared minimum and the
-initial exact project pin. Raising the consumer floor from published 0.1.1's
-1.85 excludes Rust 1.85 through 1.99.x; a user's need for older support has not
-been established. Local qualification passed on exact commit `fd65375947f5645729a0eee8ab3639de1863663d`
+Version 0.2.0 raised the minimum from Rust 1.85 to 1.100.0 and pinned
+the same compiler for project builds. During preparation, local qualification
+passed on commit `fd65375947f5645729a0eee8ab3639de1863663d`
 with Rust 1.100.0, including 155 tests in each profile, package/downstream
 checks and an official manifest check. Its public [hosted run](https://github.com/Muktidaya/rcct/actions/runs/43565878750)
 passed quality but failed four platform packaging steps on generated Python

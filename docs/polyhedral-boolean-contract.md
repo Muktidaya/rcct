@@ -1,12 +1,12 @@
 # Polyhedral Boolean operations
 
-The experimental `polyhedral` API in the RCCT 0.2.0 release candidate implements a
+The experimental `polyhedral` API introduced in rcct 0.2.0 implements a
 bounded convex halfspace path, indexed planar-face boundary admission, and
 two operations for chaining results on restricted face domains. One accepts
 axis-aligned rectangles. The other accepts convex patches on horizontal caps
 and vertical walls. All three Boolean entry points return an owned, in-memory
 boundary on success. Curved or trimmed surface operations, exact close/reopen
-persistence and arbitrary nonconvex B-rep operands are outside 0.2.0.
+persistence and arbitrary nonconvex B-rep operands are outside the 0.2 series.
 
 ## Using the current API
 

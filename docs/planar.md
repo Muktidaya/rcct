@@ -1,7 +1,7 @@
 # Initial planar geometry slice
 
 This note specifies the first finite 2D geometry and topology API in the
-unreleased `0.2.0` preparation line. It is a bounded foundation for
+0.2 series. It is a bounded foundation for
 later modeling work, not a 2D CAD application or a complete topology kernel.
 
 ## Input contract

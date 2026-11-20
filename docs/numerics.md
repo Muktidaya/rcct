@@ -1,7 +1,7 @@
 # Numerical contract and verification
 
 This document describes the implemented `gp` operations and the initial planar
-predicate/topology slice in the unreleased rcct 0.2.0 development line. The
+predicate/topology slice introduced in rcct 0.2.0. The
 published 0.1.1 package contains only the 3D `gp` API. These contracts are not a
 specification for a complete CAD kernel. The implementation is original
 Apache-2.0 Rust using elementary Cartesian formulas and exact integer arithmetic;

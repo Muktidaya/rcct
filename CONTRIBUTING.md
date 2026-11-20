@@ -13,8 +13,7 @@ warnings-denied documentation build, deterministic fixture regeneration, and
 `python3 tools/check_package.py` before a release. Validate all fixture
 generators with `--check`. Run tests in both debug and
 release profiles. Use the exact project toolchain in `rust-toolchain.toml`;
-the proposed 0.2.0 minimum is Rust 1.100.0 and older consumer support is not
-claimed for this candidate. Verify official stable metadata with
+the 0.2 series declares Rust 1.100.0 as its minimum. Verify official stable metadata with
 `python3 tools/release_toolchain.py --check`; a deliberate `--update` changes
 only the project pin and provenance, so review the separate minimum-version
 decision and diff. Do not change the machine-wide default for this project.

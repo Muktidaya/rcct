@@ -1,24 +1,24 @@
 # rcct
 
-An independent **pure-Rust CAD-kernel project**, starting with a small geometry
-foundation and using Open CASCADE Technology (OCCT) as a functional reference.
+Geometry foundations for an independent **pure-Rust CAD kernel**.
+The 0.2 series includes planar arrangements, checked 3D primitives,
+combinatorial topology and experimental solid Booleans on exact planar faces.
+The crate has no third-party dependencies. Open CASCADE Technology (OCCT)
+serves as a functional reference.
 
-**0.2.0 is a release candidate.** The latest published version is 0.1.1.
-The checkout includes planar arrangements and face selection, checked spatial
-primitives, combinatorial topology, exact indexed polyhedral boundaries, and
-experimental 3D Boolean operations on convex solids and on nonconvex solids
-with horizontal caps and vertical walls. The crate has no build script,
-third-party Rust dependencies, C++ bindings or native OCCT dependency.
+Version 0.2.1 is a documentation patch for the geometry API published in
+[0.2.0](https://crates.io/crates/rcct/0.2.0).
 
 ## Use
 
-The development checkout requires Rust 1.100.0. When moving from 0.1.1,
-existing `rcct::gp` imports and constructors still apply. Consumers requiring
-Rust 1.85 can stay on 0.1.1. To try 0.2.0 locally, use a path dependency.
+Add the following dependency to your application's `Cargo.toml`.
+The 0.2 series requires **Rust 1.100.0** or newer. Existing `rcct::gp` imports
+and constructors from 0.1.1 still apply. Projects that require Rust 1.85 can
+continue using 0.1.1. [rcct on crates.io](https://crates.io/crates/rcct)
 
 ```toml
 [dependencies]
-rcct = { path = "../rcct" }
+rcct = "0.2.1"
 ```
 
 ```rust
@@ -36,10 +36,21 @@ The `gp` module distinguishes points, displacement vectors, and unit directions.
 Point and vector coordinates are ordinary `f64` values and permit nonfinite
 inputs. Direction construction rejects zero and nonfinite vectors. Units are
 chosen by the caller; there is no implicit tolerance or robust-predicate claim.
-See the API documentation and [numerical contract](docs/numerics.md) for
+See the API documentation and [numerical contract](https://github.com/Muktidaya/rcct/blob/root/docs/numerics.md) for
 operation-specific behavior, conditioning, exceptional cases, and units.
-[Verification notes](docs/verification.md) distinguish tested acceptance budgets
+[Verification notes](https://github.com/Muktidaya/rcct/blob/root/docs/verification.md) distinguish tested acceptance budgets
 from universal guarantees and record which platforms were actually run.
+
+### Use a source checkout
+
+To work on a local copy, clone [the repository](https://github.com/Muktidaya/rcct)
+beside your application and point Cargo at the directory containing the crate's
+`Cargo.toml`.
+
+```toml
+[dependencies]
+rcct = { path = "../rcct" }
+```
 
 ## Documentation and examples
 
@@ -63,48 +74,48 @@ point translation and subtraction need not undo each other exactly. Source
 comments also explain the numerical reasons behind normalization's validation
 order and direct component division.
 
-- [Numerical contract](docs/numerics.md): operation semantics, conditioning,
+- [Numerical contract](https://github.com/Muktidaya/rcct/blob/root/docs/numerics.md): operation semantics, conditioning,
   exceptional inputs, and normalization limits.
-- [Checked spatial primitives](docs/spatial.md): finite 3D values, closed boxes,
+- [Checked spatial primitives](https://github.com/Muktidaya/rcct/blob/root/docs/spatial.md): finite 3D values, closed boxes,
   and explicitly rounded line, plane, and quadratic curve evaluations.
-- [Combinatorial topology](docs/topology.md): scoped identity, declared boundaries,
+- [Combinatorial topology](https://github.com/Muktidaya/rcct/blob/root/docs/topology.md): scoped identity, declared boundaries,
   edge-use incidence and vertex-link diagnostics without geometric validity claims.
-- [Polyhedral Boolean contract](docs/polyhedral-boolean-contract.md) describes
+- [Polyhedral Boolean contract](https://github.com/Muktidaya/rcct/blob/root/docs/polyhedral-boolean-contract.md) describes
   convex halfspace operands, admission of rational vertices and indexed planar
   faces, and chaining operations on nonconvex solids with vertical walls.
-- [Raw segment and plane events](docs/segment-plane3.md): exact event classes
+- [Raw segment and plane events](https://github.com/Muktidaya/rcct/blob/root/docs/segment-plane3.md): exact event classes
   and retained original-support crossing witnesses.
-- [Exact 3D orientation](docs/orientation3.md): raw finite-input determinant
+- [Exact 3D orientation](https://github.com/Muktidaya/rcct/blob/root/docs/orientation3.md): raw finite-input determinant
   sign, fixed-width bounds and constructed-point limitations.
-- [Planar geometry slice](docs/planar.md): exact orientation, segment events,
+- [Planar geometry slice](https://github.com/Muktidaya/rcct/blob/root/docs/planar.md): exact orientation, segment events,
   and simple closed-wire validation contracts.
-- [Segment event witnesses](docs/crossing-witness.md): exact proper-crossing,
+- [Segment event witnesses](https://github.com/Muktidaya/rcct/blob/root/docs/crossing-witness.md): exact proper-crossing,
   endpoint-touch and overlap parameters, ordering, capacity assumptions, and limitations.
-- [Repeated-cut prerequisites](docs/repeated-cut-prerequisites.md): exact
+- [Repeated-cut prerequisites](https://github.com/Muktidaya/rcct/blob/root/docs/repeated-cut-prerequisites.md): exact
   constructed-input, resource and arrangement gates.
-- [Bounded constructed predicates](docs/constructed-predicates.md): supported
+- [Bounded constructed predicates](https://github.com/Muktidaya/rcct/blob/root/docs/constructed-predicates.md): supported
   first-generation orientation and original-support span split contracts.
-- [Original-support span intersections](docs/span-intersection.md): exact
+- [Original-support span intersections](https://github.com/Muktidaya/rcct/blob/root/docs/span-intersection.md): exact
   clipping, cross-support point location, query budgets and scope.
-- [Planar arrangement graph](docs/planar-arrangement.md): shared vertices,
+- [Planar arrangement graph](https://github.com/Muktidaya/rcct/blob/root/docs/planar-arrangement.md): shared vertices,
   coincident edges, source traversal, resource limits and failure semantics.
-- [Planar graph bridges](docs/planar-bridges.md): bounded component and
+- [Planar graph bridges](https://github.com/Muktidaya/rcct/blob/root/docs/planar-bridges.md): bounded component and
   graph-edge bridge analysis, including coincident source uses.
-- [Planar half-edge embedding](docs/planar-embedding.md): exact radial order,
+- [Planar half-edge embedding](https://github.com/Muktidaya/rcct/blob/root/docs/planar-embedding.md): exact radial order,
   boundary walks, simple-walk orientation and limits.
-- [Planar faces and winding](docs/planar-faces.md): simple-walk face grouping,
+- [Planar faces and winding](https://github.com/Muktidaya/rcct/blob/root/docs/planar-faces.md): simple-walk face grouping,
   a restricted bridge-aware path, exact containment, winding and limits.
-- [Planar Boolean regions](docs/planar-boolean.md): per-group winding and
+- [Planar Boolean regions](https://github.com/Muktidaya/rcct/blob/root/docs/planar-boolean.md): per-group winding and
   face-based 2D selection, exact raw-point classification, limits and exclusions.
-- [Arithmetic backend evaluation](docs/arithmetic-backend-evaluation.md):
+- [Arithmetic backend evaluation](https://github.com/Muktidaya/rcct/blob/root/docs/arithmetic-backend-evaluation.md):
   preliminary license, dependency and unsafe-code tradeoffs.
-- [Verification record](docs/verification.md): independent references,
+- [Verification record](https://github.com/Muktidaya/rcct/blob/root/docs/verification.md): independent references,
   acceptance budgets, tagged-source compatibility checks, and exact CI evidence.
 - [Contribution guide](https://github.com/Muktidaya/rcct/blob/root/CONTRIBUTING.md)
   covers checks and source-provenance requirements.
-- [Displacement example](examples/displacement.rs): a small runnable translation,
+- [Displacement example](https://github.com/Muktidaya/rcct/blob/root/examples/displacement.rs): a small runnable translation,
   distance, and direction example.
-- [Convex clipping example](examples/convex_clip.rs) intersects a unit cube and
+- [Convex clipping example](https://github.com/Muktidaya/rcct/blob/root/examples/convex_clip.rs) intersects a unit cube and
   a tetrahedron and reads the exact volume of the result.
 
 ```sh
@@ -114,16 +125,10 @@ cargo test --doc
 cargo doc --no-deps --all-features
 ```
 
-Open `target/doc/rcct/index.html` for documentation built from the current
-checkout. The hosted [API documentation](https://docs.rs/rcct) describes the
-published crate and does not yet document this unreleased candidate.
+Open `target/doc/rcct/index.html` for documentation built from the checkout.
+The published crate's [API documentation is available on docs.rs](https://docs.rs/rcct).
 
-## Scope and development direction
-
-This preparation checkout is an original Rust implementation of geometry foundations.
-OCCT is a functional reference, not a runtime dependency or an architectural
-constraint. The goal is a Rust-native design that can improve on reference
-implementations rather than reproduce their source, API, or internal structure.
+## Geometry supported in 0.2
 
 - **v0.1.1:** published elementary 3D point/vector/direction API, numerical
   contracts, and independent verification; it supports Rust 1.85.
@@ -143,10 +148,7 @@ implementations rather than reproduce their source, API, or internal structure.
 - **Release limits.** Solid Boolean operations use planar faces and checked
   fixed-width rational arithmetic. Results are owned in memory. Curved or
   trimmed surface operations, saving and reopening exact solids, and Boolean
-  operations on arbitrary nonconvex B-rep operands are outside 0.2.0.
-
-The roadmap is a statement of intended scope, not an OCCT compatibility promise,
-safety assurance, completed implementation, or delivery schedule.
+  operations on arbitrary nonconvex B-rep operands are outside the 0.2 series.
 
 Development should preserve explicit ownership, geometric invariants, numerical
 contracts, and source provenance. Implementations must remain independent and
@@ -158,11 +160,9 @@ LGPL-licensed OCCT source. See
 
 The project pins an exact compiler in `rust-toolchain.toml` for reproducible
 build and release preparation. The current pin is recorded in the
-[toolchain provenance](docs/toolchain-provenance.md). The proposed 0.2.0
-`rust-version` is 1.100.0; this is a consumer compatibility change from
-0.1.1's 1.85 minimum. Local Rust 1.100.0 checks passed on `fd65375`;
-that evidence does not qualify later commits. The pin does not change
-the machine-wide default. Confirm official stable metadata at release time:
+[toolchain provenance](https://github.com/Muktidaya/rcct/blob/root/docs/toolchain-provenance.md). The manifest records
+the minimum supported compiler in `rust-version`. Check the official stable
+metadata when preparing a release.
 
 ```sh
 python3 tools/release_toolchain.py --check
@@ -173,9 +173,7 @@ python3 tools/release_toolchain.py --update
 The update command changes only the project pin and provenance, not
 `rust-version`; review that separate compatibility decision and diff. If the
 minimum differs from the new pin, add a separately qualified minimum lane or
-revise the minimum before claiming support. The official manifest check passed
-on `fd65375`; recheck it at release time. Its hosted run failed packaging on
-generated Python bytecode, so later fixes require their own qualification.
+revise the minimum before claiming support.
 
 ```sh
 cargo fmt --all -- --check
@@ -199,11 +197,10 @@ python3 tools/check_package.py
 ```
 
 CI is configured for the explicit project pin across Linux, macOS and Windows,
-including Linux/macOS ARM64, with debug and release tests. Earlier verification
-records apply only to their exact revisions; this candidate needs its own
-qualification. No OCCT installation is required. Fixture generators use
-Python 3.9+ standard-library modules. The package checker and release pin tool
-require Python 3.11+ for the standard-library TOML parser.
+including Linux/macOS ARM64, with debug and release tests. Verification
+records identify the commit tested. No OCCT installation is required.
+Fixture generators use Python 3.9+ standard-library modules. The package checker
+and release pin tool require Python 3.11+ for the standard-library TOML parser.
 
 ## Assurance boundaries
 
@@ -221,7 +218,7 @@ qualification work for any regulated use.
 ## License and attribution
 
 Licensed under the **Apache License, Version 2.0** (`Apache-2.0`). See
-[LICENSE.txt](LICENSE.txt) and [NOTICE.md](NOTICE.md).
+[LICENSE.txt](https://github.com/Muktidaya/rcct/blob/root/LICENSE.txt) and [NOTICE.md](https://github.com/Muktidaya/rcct/blob/root/NOTICE.md).
 
 The initial implementation is original Rust code implementing standard
 Cartesian geometry. No OCCT source was copied, translated, or linked into it.
