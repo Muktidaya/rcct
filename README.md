@@ -5,8 +5,8 @@ foundation and using Open CASCADE Technology (OCCT) as a functional reference.
 
 **0.2.0 is in development.** The latest published version is 0.1.1.
 The checkout includes planar arrangements and face selection, checked spatial
-primitives, combinatorial topology, and experimental 3D Boolean operations on
-convex polyhedra constructed from integer halfspaces. The crate has no build
+primitives, combinatorial topology, exact indexed polyhedral boundaries, and
+experimental 3D Boolean operations on admitted convex solids. The crate has no build
 script, third-party Rust dependencies, C++ bindings or native OCCT dependency.
 
 ## Use
@@ -69,8 +69,8 @@ order and direct component division.
 - [Combinatorial topology](docs/topology.md): scoped identity, declared boundaries,
   edge-use incidence and vertex-link diagnostics without geometric validity claims.
 - [Polyhedral Boolean contract](docs/polyhedral-boolean-contract.md) describes
-  integer halfspace inputs, bounded rational construction, result reuse and
-  the remaining acceptance obligations.
+  convex halfspace operands, admission of rational vertices and indexed planar
+  faces, checked arithmetic, and convex reuse.
 - [Raw segment and plane events](docs/segment-plane3.md): exact event classes
   and retained original-support crossing witnesses.
 - [Exact 3D orientation](docs/orientation3.md): raw finite-input determinant
@@ -130,9 +130,10 @@ implementations rather than reproduce their source, API, or internal structure.
   events feed bounded arrangements and face-based 2D Booleans. The spatial
   module adds exact raw-input 3D orientation and segment–plane classification.
   The topology module records combinatorial boundary uses and incidence.
-  The experimental polyhedral module takes two admitted convex operands and
-  computes regularized union, intersection or difference within checked
-  arithmetic and resource limits.
+  The experimental polyhedral module admits closed boundaries from exact
+  rational vertices and outward-oriented convex planar faces. A convex
+  boundary can be re-admitted as an operand for regularized union,
+  intersection or difference within checked arithmetic and resource limits.
 - **Remaining v0.2.0 scope:** broader geometry, B-rep, and Boolean operations.
   The convex milestone still requires qualification. Arbitrary B-rep inputs,
   nonconvex operand closure and curved solid Booleans remain open.

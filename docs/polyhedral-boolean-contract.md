@@ -1,7 +1,8 @@
 # Convex polyhedral Boolean milestone
 
 RCCT 0.2.0 is in development. The experimental `polyhedral` API implements a
-bounded halfspace path. Broader geometry, B-rep and Boolean operations remain
+bounded convex halfspace path and indexed planar-face boundary admission.
+Broader geometry, B-rep and Boolean operations remain
 in scope. The design requirements and acceptance cases below apply to the
 milestone and still require qualification on a specified revision.
 
@@ -30,12 +31,35 @@ boundary assembly. No step converts a constructed point to binary64. Even
 when the input coefficients fit, an intermediate can exceed capacity and
 return `ArithmeticLimit`. The work meter limits operation checkpoints and
 cumulative requested vector storage, with cancellation checked cooperatively.
-The public constructor accepts integer halfspaces only. Arbitrary B-rep or
-polygon-soup inputs, nonconvex operands, curved geometry and general exact
-persistence require separate APIs.
 
 The [convex clipping example](../examples/convex_clip.rs) constructs both
 operands and inspects the rational volume.
+
+## Supplying an indexed boundary
+
+Use `SolidBoundary::from_indexed_faces(&vertices, &faces, &mut work)` for a
+boundary already described by planar faces and shared vertices. Each point
+has three `(i128, i128)` coordinate pairs in numerator, denominator order.
+Each denominator must be nonzero. Admission reduces each fraction and moves
+its sign to the numerator. Distinct vertex indices must denote distinct
+points after reduction, and every point must appear in a face. Two empty
+tables represent an empty boundary.
+
+Each `IndexedFace { plane, vertices }` supplies its oriented `Plane3h` and
+a cyclic slice of vertex indices. Supply each loop vertex once. The final edge
+joins the last index to the first. A face must enclose positive area, be convex,
+lie on its plane and wind counterclockwise when viewed from outside the material.
+Adjacent faces must reference the same endpoints in opposite directions.
+For a subdivided seam, both loops must include each subdivision vertex. A duplicate point
+under a different index, an unsplit T-junction or an open seam fails admission.
+
+The resulting owned boundary can enclose disconnected components and cavities.
+Each shell must bound material on the correct side for its nesting depth,
+so a cavity wall faces into the cavity. The checked arithmetic, work, storage
+and cancellation limits above apply throughout admission. To use the result
+in `boolean3`, first call `as_convex`. A valid nonconvex boundary returns
+`UnsupportedNonconvex` at this step. Curved and trimmed surfaces, general
+nonconvex Boolean operands and persistent CAD file formats remain open.
 
 ## Design requirements for the wider milestone
 
@@ -141,11 +165,10 @@ These are acceptance targets. Passing evidence belongs to the exact revision and
 - Exact affine transforms and reflections preserve set relationships with
   appropriate orientation changes. Dyadic sliver, exact contact and gap remain
   distinct; distinct rationals with the same binary64 rounding remain distinct.
-- Invalid candidate shells, reversed outer orientation, inconsistent face planes,
-  missing boundary and open loops receive typed admission errors when the
-  selected input path accepts B-rep candidates. If the initial public constructor
-  accepts halfspaces only, equivalent malformed internal drafts must be rejected
-  before publication; do not claim an arbitrary B-rep input API exists.
+- Invalid indexed shells, reversed outer orientation, inconsistent face planes,
+  missing faces and open seams receive typed admission errors. Exercise these
+  cases through the public indexed constructor and check exact convex reuse
+  followed by a Boolean operation.
 - Each resource cap and cancellation path returns no partially validated result
   while recording work already consumed according to the operation contract.
 

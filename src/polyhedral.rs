@@ -22,7 +22,7 @@ mod exact;
 mod select;
 
 pub use admit::{ConvexSolid, Plane3h};
-pub use boundary::SolidBoundary;
+pub use boundary::{IndexedFace, SolidBoundary};
 
 use exact::P;
 

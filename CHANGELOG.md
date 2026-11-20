@@ -6,6 +6,10 @@
   and difference of bounded convex halfspace solids. Plane coefficients are
   `i64`. Constructed vertices and volume use checked rational arithmetic with
   `i128` components. Reuse a result only after convex re-admission.
+- Add `SolidBoundary::from_indexed_faces` for exact rational vertices and
+  indexed convex planar patches. Admission checks shared seams, manifold
+  incidence and material-side orientation across shells. Call `as_convex`
+  before using the boundary as a Boolean operand.
 - Include bounded planar arrangements and face-based 2D Boolean selection,
   checked spatial primitives and raw-input predicates, and combinatorial
   boundary and incidence diagnostics.

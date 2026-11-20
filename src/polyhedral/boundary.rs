@@ -10,6 +10,18 @@ pub(super) struct BoundaryFace {
     pub(super) indices: Vec<usize>,
 }
 
+/// One convex planar patch in an indexed boundary supplied by a caller.
+///
+/// The indices form one outward-oriented loop. The last vertex connects to
+/// the first. Include all subdivision vertices shared by incident faces.
+#[derive(Clone, Copy, Debug)]
+pub struct IndexedFace<'a> {
+    /// Exact oriented support, with material locally on its nonpositive side.
+    pub plane: Plane3h,
+    /// Distinct indices into the shared vertex table, in boundary order.
+    pub vertices: &'a [usize],
+}
+
 /// An owned boundary of the regularized material set.
 ///
 /// Each convex face carries an outward support and an oriented loop of exact
@@ -76,6 +88,88 @@ impl SolidBoundary {
         self.volume.parts()
     }
 
+    /// Admits an exact indexed boundary and copies it into an owned result.
+    ///
+    /// Each coordinate is a (numerator, denominator) pair. Equivalent ratios
+    /// normalize to the same point. A zero denominator, duplicate points,
+    /// unused vertices, invalid indices or a repeated vertex within one face
+    /// yield [`PolyhedralError::InvalidBoundary`]. Only two empty input tables
+    /// describe the empty solid. Arithmetic beyond the checked representation
+    /// yields [`PolyhedralError::ArithmeticLimit`].
+    ///
+    /// Each face must be a convex planar patch on its oriented support.
+    /// Neighbors must specify identical seams, including intermediate collinear
+    /// vertices. The entire boundary must form an embedded closed, oriented
+    /// manifold with outward outer shells and inward cavity shells. Validation
+    /// preserves vertex and face order and requires no tolerance or coordinate
+    /// snapping. A successful result can have multiple shells or be nonconvex.
+    /// Use [`Self::as_convex`] to check admission as a Boolean operand.
+    pub fn from_indexed_faces(
+        coordinates: &[[(i128, i128); 3]],
+        faces: &[IndexedFace<'_>],
+        work: &mut PolyhedralWork<'_>,
+    ) -> R<Self> {
+        work.charge(1)?;
+        if faces.is_empty() {
+            return if coordinates.is_empty() {
+                Ok(Self::empty())
+            } else {
+                Err(PolyhedralError::InvalidBoundary)
+            };
+        }
+
+        let mut vertices = Vec::new();
+        work.reserve(&mut vertices, coordinates.len())?;
+        for coordinate in coordinates {
+            work.charge(1)?;
+            let mut point = [Q::ZERO; 3];
+            for (axis, &(num, den)) in coordinate.iter().enumerate() {
+                if den == 0 {
+                    return Err(PolyhedralError::InvalidBoundary);
+                }
+                point[axis] = Q::ratio(num, den)?;
+            }
+            for known in &vertices {
+                work.charge(1)?;
+                if *known == point {
+                    return Err(PolyhedralError::InvalidBoundary);
+                }
+            }
+            vertices.push(point);
+        }
+
+        let mut last_use = Vec::new();
+        work.reserve(&mut last_use, vertices.len())?;
+        last_use.resize(vertices.len(), None);
+        let mut owned = Vec::new();
+        work.reserve(&mut owned, faces.len())?;
+        for (face_id, face) in faces.iter().enumerate() {
+            let mut indices = Vec::new();
+            work.reserve(&mut indices, face.vertices.len())?;
+            for &id in face.vertices {
+                work.charge(1)?;
+                let seen = last_use
+                    .get_mut(id)
+                    .ok_or(PolyhedralError::InvalidBoundary)?;
+                if seen.replace(face_id) == Some(face_id) {
+                    return Err(PolyhedralError::InvalidBoundary);
+                }
+                indices.push(id);
+            }
+            check_facet(face.plane, indices.len(), |i| vertices[indices[i]], work)?;
+            check_indexed_seams(&indices, &vertices, work)?;
+            owned.push(BoundaryFace {
+                plane: face.plane,
+                indices,
+            });
+        }
+        work.charge(last_use.len())?;
+        if last_use.contains(&None) {
+            return Err(PolyhedralError::InvalidBoundary);
+        }
+        Self::validate_shells(vertices, owned, work)
+    }
+
     pub(super) fn from_facets(facets: Vec<Facet>, work: &mut PolyhedralWork<'_>) -> R<Self> {
         work.charge(1)?;
         if facets.is_empty() {
@@ -85,7 +179,12 @@ impl SolidBoundary {
         let mut faces = Vec::new();
         work.reserve(&mut faces, facets.len())?;
         for facet in facets {
-            check_facet(&facet, work)?;
+            check_facet(
+                facet.plane,
+                facet.vertices.len(),
+                |i| facet.vertices[i],
+                work,
+            )?;
             let mut indices = Vec::new();
             work.reserve(&mut indices, facet.vertices.len())?;
             for point in facet.vertices {
@@ -120,6 +219,16 @@ impl SolidBoundary {
         for face in &mut faces {
             face.indices = refine_edges(&face.indices, &vertices, work)?;
         }
+        Self::validate_shells(vertices, faces, work)
+    }
+
+    // Both callers establish distinct vertices, valid loops and matching
+    // subdivisions before invoking the same embeddedness and shell checks.
+    fn validate_shells(
+        vertices: Vec<P>,
+        faces: Vec<BoundaryFace>,
+        work: &mut PolyhedralWork<'_>,
+    ) -> R<Self> {
         for (i, face) in faces.iter().enumerate() {
             for other in &faces[..i] {
                 check_face_pair(face, other, &vertices, work)?;
@@ -167,24 +276,29 @@ fn side(a: P, b: P, p: P, projection: (usize, usize, i8)) -> R<i8> {
     Ok(area.sign() * normal_sign)
 }
 
-fn check_facet(facet: &Facet, work: &mut PolyhedralWork<'_>) -> R<()> {
-    let points = &facet.vertices;
-    if points.len() < 3 {
+fn check_facet(
+    plane: Plane3h,
+    count: usize,
+    point: impl Fn(usize) -> P,
+    work: &mut PolyhedralWork<'_>,
+) -> R<()> {
+    if count < 3 {
         return Err(PolyhedralError::InvalidBoundary);
     }
-    let projection = projection(facet.plane)?;
-    for (i, &a) in points.iter().enumerate() {
+    let projection = projection(plane)?;
+    for i in 0..count {
         work.charge(1)?;
-        let b = points[(i + 1) % points.len()];
-        if a == b || facet.plane.eval(a)?.sign() != 0 {
+        let a = point(i);
+        let b = point((i + 1) % count);
+        if a == b || plane.eval(a)?.sign() != 0 {
             return Err(PolyhedralError::InvalidBoundary);
         }
         // Each directed edge must support the entire convex patch, and at
         // least one vertex must certify nonzero area on its material side.
         let mut positive = false;
-        for &p in points {
+        for j in 0..count {
             work.charge(1)?;
-            match side(a, b, p, projection)? {
+            match side(a, b, point(j), projection)? {
                 -1 => return Err(PolyhedralError::InvalidBoundary),
                 1 => positive = true,
                 _ => {}
@@ -192,6 +306,41 @@ fn check_facet(facet: &Facet, work: &mut PolyhedralWork<'_>) -> R<()> {
         }
         if !positive {
             return Err(PolyhedralError::InvalidBoundary);
+        }
+    }
+    Ok(())
+}
+
+// The edge direction has a nonzero component on `axis`. Check a strict
+// interval there first, then compare all coordinates at the exact parameter.
+fn lies_inside_edge(p: P, a: P, b: P, d: P, axis: usize) -> R<bool> {
+    let coord = p[axis];
+    let (lo, hi) = if d[axis].sign() > 0 {
+        (a[axis], b[axis])
+    } else {
+        (b[axis], a[axis])
+    };
+    if coord.cmp_checked(lo)? != Ordering::Greater || coord.cmp_checked(hi)? != Ordering::Less {
+        return Ok(false);
+    }
+    let t = coord.sub(a[axis])?.div(d[axis])?;
+    Ok(mix(a, b, t)? == p)
+}
+
+fn check_indexed_seams(indices: &[usize], vertices: &[P], work: &mut PolyhedralWork<'_>) -> R<()> {
+    for (i, &id) in indices.iter().enumerate() {
+        let a = vertices[id];
+        let b = vertices[indices[(i + 1) % indices.len()]];
+        let d = sub3(b, a)?;
+        let axis = d
+            .iter()
+            .position(|q| q.sign() != 0)
+            .ok_or(PolyhedralError::InvalidBoundary)?;
+        for &p in vertices {
+            work.charge(1)?;
+            if lies_inside_edge(p, a, b, d, axis)? {
+                return Err(PolyhedralError::InvalidBoundary);
+            }
         }
     }
     Ok(())
@@ -217,18 +366,7 @@ fn refine_edges(ids: &[usize], vertices: &[P], work: &mut PolyhedralWork<'_>) ->
             work.charge(1)?;
             let coord = p[axis];
             let asc = d[axis].sign() > 0;
-            let (lo, hi) = if asc {
-                (a[axis], b[axis])
-            } else {
-                (b[axis], a[axis])
-            };
-            if coord.cmp_checked(lo)? != Ordering::Greater
-                || coord.cmp_checked(hi)? != Ordering::Less
-            {
-                continue;
-            }
-            let t = coord.sub(a[axis])?.div(d[axis])?;
-            if mix(a, b, t)? != p {
+            if !lies_inside_edge(p, a, b, d, axis)? {
                 continue;
             }
             let mut pos = refined.len();
