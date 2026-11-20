@@ -3,7 +3,7 @@
 An independent **pure-Rust CAD-kernel project**, starting with a small geometry
 foundation and using Open CASCADE Technology (OCCT) as a functional reference.
 
-**0.2.0 is in development.** The latest published version is 0.1.1.
+**0.2.0 is a release candidate.** The latest published version is 0.1.1.
 The checkout includes planar arrangements and face selection, checked spatial
 primitives, combinatorial topology, exact indexed polyhedral boundaries, and
 experimental 3D Boolean operations on convex solids and on nonconvex solids
@@ -127,7 +127,7 @@ implementations rather than reproduce their source, API, or internal structure.
 
 - **v0.1.1:** published elementary 3D point/vector/direction API, numerical
   contracts, and independent verification; it supports Rust 1.85.
-- **v0.2.0 in progress.** Checked finite planar primitives and exact segment
+- **v0.2.0 bounded planar solids.** Checked finite planar primitives and exact segment
   events feed bounded arrangements and face-based 2D Booleans. The spatial
   module adds exact raw-input 3D orientation and segment–plane classification.
   The topology module records combinatorial boundary uses and incidence.
@@ -140,13 +140,10 @@ implementations rather than reproduce their source, API, or internal structure.
   independently oriented rational planes. It takes the returned boundary
   directly, including a nonconvex result. Each face must be an admitted
   convex planar patch.
-- **Remaining v0.2.0 scope** includes qualification of broader geometry,
-  B-rep and Boolean operations. The numbered convex acceptance cases and
-  the bounded oblique cases require evidence on the selected release revision.
-  Curved and trimmed surfaces still require separate qualification.
-- **After 0.2.0**, the project plans to extend Boolean operations to arbitrary
-  nonconvex B-rep operands. Additional modeling algorithms and exchange
-  formats remain later directions.
+- **Release limits.** Solid Boolean operations use planar faces and checked
+  fixed-width rational arithmetic. Results are owned in memory. Curved or
+  trimmed surface operations, saving and reopening exact solids, and Boolean
+  operations on arbitrary nonconvex B-rep operands are outside 0.2.0.
 
 The roadmap is a statement of intended scope, not an OCCT compatibility promise,
 safety assurance, completed implementation, or delivery schedule.

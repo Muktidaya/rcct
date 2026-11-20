@@ -1,12 +1,12 @@
 # Polyhedral Boolean operations
 
-RCCT 0.2.0 is in development. The experimental `polyhedral` API implements a
+The experimental `polyhedral` API in the RCCT 0.2.0 release candidate implements a
 bounded convex halfspace path, indexed planar-face boundary admission, and
 two operations for chaining results on restricted face domains. One accepts
 axis-aligned rectangles. The other accepts convex patches on horizontal caps
-and vertical walls. Broader geometry, B-rep and Boolean operations remain in
-scope. The design requirements and acceptance cases below apply to the
-milestone and still require qualification on a specified revision.
+and vertical walls. All three Boolean entry points return an owned, in-memory
+boundary on success. Curved or trimmed surface operations, exact close/reopen
+persistence and arbitrary nonconvex B-rep operands are outside 0.2.0.
 
 ## Using the current API
 
@@ -255,8 +255,7 @@ These are acceptance targets. Passing evidence belongs to the exact revision and
 The first milestone retains acceptance cases P01–P16 and P18–P20. P06
 requires a typed nonmanifold result and P16 requires `as_convex` to return
 `UnsupportedNonconvex` for a nonconvex result. The rectilinear and prismatic
-operations check their respective patch domains independently. Arbitrary
-nonconvex B-rep operands are planned after 0.2.0. P17 exact persistence and
-curved or trimmed cases require separate qualification. Qualification of the
+operations check their respective patch domains independently. P17 covers
+exact persistence and belongs to a separate milestone. Qualification of the
 convex path must cover exact construction and refinement, face ownership
 and geometric admission within its documented arithmetic and resource limits.

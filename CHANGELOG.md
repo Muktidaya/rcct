@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0 (unreleased development)
+## 0.2.0 (release candidate)
 
 - Add an experimental `polyhedral` module for regularized union, intersection
   and difference of bounded convex halfspace solids. Plane coefficients are
@@ -24,8 +24,11 @@
   boundary and incidence diagnostics.
 - Raise the development manifest's minimum Rust version from 1.85 to 1.100.0.
   Existing `rcct::gp` calls retain their 0.1.1 API.
-- Broader geometry, B-rep and Boolean scope remains in development. General
-  3D Boolean robustness and safety qualification remain unestablished.
+- Results are owned in memory. Curved or trimmed surface operations, exact
+  close/reopen persistence and arbitrary nonconvex B-rep Booleans are outside
+  this release. See the [polyhedral contract](docs/polyhedral-boolean-contract.md)
+  for the admitted face domains, work and storage budgets, cancellation and
+  arithmetic limits.
 
 ## 0.2.0-alpha.1 (historical unreleased development record)
 

@@ -11,7 +11,9 @@
 //! and exact indexed planar-face boundaries. [`polyhedral::boolean3`] takes
 //! convex operands. [`polyhedral::boolean_rectilinear3`] accepts boundaries
 //! built from axis-aligned rectangular patches, including nonconvex results
-//! from earlier operations. Both use checked fixed-width rational arithmetic.
+//! from earlier operations. [`polyhedral::boolean_prismatic3`] accepts horizontal
+//! caps and vertical planar walls on independent supports. All three use checked
+//! fixed-width rational arithmetic and return owned, in-memory boundaries.
 //!
 //! Use [`gp::Point3`] for locations, [`gp::Vector3`] for displacements, and
 //! [`gp::UnitDirection3`] when magnitude should be discarded after validation.
