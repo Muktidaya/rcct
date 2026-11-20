@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Regularized solid operations on bounded convex polyhedra defined by halfspaces.
+//! Regularized solid operations on bounded polyhedra.
 //!
 //! Integer plane coefficients describe exact rational planes. Construction and
 //! comparison use checked rational arithmetic throughout. A capacity failure
@@ -10,7 +10,9 @@
 //! convex operand. [`SolidBoundary::from_indexed_faces`] also accepts exact
 //! rational vertices and oriented convex face loops with shared index seams.
 //! For rectangular patches parallel to the coordinate planes, [`boolean_rectilinear3`]
-//! also accepts nonconvex results directly. Empty solids are represented explicitly.
+//! also accepts nonconvex results directly. [`boolean_prismatic3`] admits
+//! horizontal caps and vertical walls with rational plane coefficients. Empty solids
+//! are represented explicitly.
 //!
 //! Work and storage limits apply to one or more calls through the same meter.
 //! Exact arithmetic has a fixed 128-bit representation and checked intermediates.
@@ -22,11 +24,13 @@ use std::sync::atomic::{AtomicBool, Ordering};
 mod admit;
 mod boundary;
 mod exact;
+mod prismatic;
 mod rectilinear;
 mod select;
 
 pub use admit::{ConvexSolid, Plane3h};
 pub use boundary::{IndexedFace, SolidBoundary};
+pub use prismatic::boolean_prismatic3;
 pub use rectilinear::boolean_rectilinear3;
 
 use exact::P;
@@ -60,7 +64,7 @@ pub enum PolyhedralError {
     NonManifoldResult,
     /// A valid result cannot be reused as a convex operand.
     UnsupportedNonconvex,
-    /// A boundary patch falls outside the rectangular face domain of a rectilinear operation.
+    /// A boundary patch falls outside the selected operation's face domain.
     UnsupportedFaceGeometry,
 }
 

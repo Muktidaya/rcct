@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Partition convex faces by supporting planes; select oriented material transitions.
 
+use std::cmp::Ordering;
+
 use super::exact::{P, mix};
 use super::{ConvexSolid, Facet, Operation3, Plane3h, PolyhedralError, PolyhedralWork, R};
 
@@ -30,16 +32,15 @@ fn append<T>(out: &mut Vec<T>, item: T, work: &mut PolyhedralWork<'_>) -> R<()> 
     Ok(())
 }
 
-fn partition(
-    mut piece: Piece,
-    source: Plane3h,
+fn partition_polygon(
+    vertices: Vec<P>,
     cutter: Plane3h,
-    next: &mut Vec<Piece>,
     work: &mut PolyhedralWork<'_>,
+    mut emit: impl FnMut(Vec<P>, Ordering, &mut PolyhedralWork<'_>) -> R<()>,
 ) -> R<()> {
     let mut negative = false;
     let mut positive = false;
-    for &p in &piece.vertices {
+    for &p in &vertices {
         work.charge(1)?;
         let sign = cutter.eval(p)?.sign();
         negative |= sign < 0;
@@ -50,27 +51,12 @@ fn partition(
     // strictly positive combination of its vertices. A weak one-sided sign
     // with any strict vertex therefore determines its open fragment.
     if !(negative && positive) {
-        if positive {
-            piece.other = Sides::OUTSIDE;
-        } else if !negative {
-            // Both planes contain the entire open 2D patch. Admission
-            // reduces integer coefficients to primitive oriented tuples,
-            // so these are the only two ways their supports can agree.
-            if source == cutter {
-                piece.other.outward = false;
-            } else if source == cutter.reversed() {
-                piece.other.inward = false;
-            } else {
-                return Err(PolyhedralError::InvalidBoundary);
-            }
-        }
-        return append(next, piece, work);
+        return emit(vertices, positive.cmp(&negative), work);
     }
 
     // Both open halfspaces contain vertices. Clipping a convex polygon at
     // one line introduces at most two additional boundary points.
-    let bound = piece
-        .vertices
+    let bound = vertices
         .len()
         .checked_add(2)
         .ok_or(PolyhedralError::ResourceLimit)?;
@@ -78,12 +64,9 @@ fn partition(
     let mut outside = Vec::new();
     work.reserve(&mut inside, bound)?;
     work.reserve(&mut outside, bound)?;
-    let mut prev = *piece
-        .vertices
-        .last()
-        .ok_or(PolyhedralError::InvalidBoundary)?;
+    let mut prev = *vertices.last().ok_or(PolyhedralError::InvalidBoundary)?;
     let mut prev_value = cutter.eval(prev)?;
-    for point in piece.vertices {
+    for point in vertices {
         work.charge(1)?;
         let value = cutter.eval(point)?;
         if prev_value.sign() * value.sign() < 0 {
@@ -101,22 +84,75 @@ fn partition(
         prev = point;
         prev_value = value;
     }
-    append(
-        next,
-        Piece {
-            vertices: inside,
-            other: piece.other,
-        },
-        work,
-    )?;
-    append(
-        next,
-        Piece {
-            vertices: outside,
-            other: Sides::OUTSIDE,
-        },
-        work,
-    )
+    emit(inside, Ordering::Less, work)?;
+    emit(outside, Ordering::Greater, work)
+}
+
+/// Appends the full-dimensional parts of the convex patch on either side of the cutter.
+pub(super) fn split_polygon(
+    vertices: Vec<P>,
+    cutter: Plane3h,
+    next: &mut Vec<Vec<P>>,
+    work: &mut PolyhedralWork<'_>,
+) -> R<()> {
+    partition_polygon(vertices, cutter, work, |vertices, _, work| {
+        append(next, vertices, work)
+    })
+}
+
+fn partition(
+    piece: Piece,
+    source: Plane3h,
+    cutter: Plane3h,
+    next: &mut Vec<Piece>,
+    work: &mut PolyhedralWork<'_>,
+) -> R<()> {
+    partition_polygon(piece.vertices, cutter, work, |vertices, side, work| {
+        let mut other = piece.other;
+        match side {
+            Ordering::Less => {}
+            Ordering::Greater => other = Sides::OUTSIDE,
+            // Admission uses primitive oriented coefficients, so coplanar
+            // supports agree up to sign.
+            Ordering::Equal if source == cutter => other.outward = false,
+            Ordering::Equal if source == cutter.reversed() => other.inward = false,
+            Ordering::Equal => return Err(PolyhedralError::InvalidBoundary),
+        }
+        append(next, Piece { vertices, other }, work)
+    })
+}
+
+/// The opposing material labels are ordered (inward, outward) relative to the source face.
+pub(super) fn emit_transition(
+    vertices: Vec<P>,
+    plane: Plane3h,
+    other: (bool, bool),
+    source_is_a: bool,
+    op: Operation3,
+    facets: &mut Vec<Facet>,
+    work: &mut PolyhedralWork<'_>,
+) -> R<()> {
+    work.charge(1)?;
+    let (inward, outward) = other;
+    // When both solids have a boundary here, A owns the shared open patch.
+    if !source_is_a && inward != outward {
+        return Ok(());
+    }
+    let (inner, outer) = if source_is_a {
+        (op.accepts(true, inward), op.accepts(false, outward))
+    } else {
+        (op.accepts(inward, true), op.accepts(outward, false))
+    };
+    if inner == outer {
+        return Ok(());
+    }
+    let mut facet = Facet { plane, vertices };
+    if outer {
+        work.charge(facet.vertices.len())?;
+        facet.vertices.reverse();
+        facet.plane = facet.plane.reversed();
+    }
+    append(facets, facet, work)
 }
 
 fn select_source(
@@ -153,37 +189,15 @@ fn select_source(
             pieces = next;
         }
         for piece in pieces {
-            work.charge(1)?;
-            let sides = piece.other;
-            // Exactly one opposing material side means both solids have a
-            // face at this open patch; the A pass owns that shared patch.
-            if !source_is_a && sides.inward != sides.outward {
-                continue;
-            }
-            let (inner, outer) = if source_is_a {
-                (
-                    op.accepts(true, sides.inward),
-                    op.accepts(false, sides.outward),
-                )
-            } else {
-                (
-                    op.accepts(sides.inward, true),
-                    op.accepts(sides.outward, false),
-                )
-            };
-            if inner == outer {
-                continue;
-            }
-            let mut facet = Facet {
-                plane: face.plane,
-                vertices: piece.vertices,
-            };
-            if outer {
-                work.charge(facet.vertices.len())?;
-                facet.vertices.reverse();
-                facet.plane = facet.plane.reversed();
-            }
-            append(facets, facet, work)?;
+            emit_transition(
+                piece.vertices,
+                face.plane,
+                (piece.other.inward, piece.other.outward),
+                source_is_a,
+                op,
+                facets,
+                work,
+            )?;
         }
     }
     Ok(())

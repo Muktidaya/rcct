@@ -88,6 +88,42 @@ impl SolidBoundary {
         self.volume.parts()
     }
 
+    // The open source fragment has already been split at every noncoplanar
+    // support of this boundary. At its interior sample, material may differ
+    // across the source plane, but is locally constant on each open side.
+    pub(super) fn material_sides_at(
+        &self,
+        point: P,
+        source: Plane3h,
+        work: &mut PolyhedralWork<'_>,
+    ) -> R<(bool, bool)> {
+        let mut k = Q::ZERO;
+        loop {
+            work.charge(1)?;
+            let dir = [Q::ONE, k, k.mul(k)?];
+            let slope = dot(source.normal(), dir)?.sign();
+            if slope != 0
+                && let Some(forward) =
+                    crossing_parity(point, dir, &self.faces, &self.vertices, work)?
+            {
+                let reverse = [dir[0].neg()?, dir[1].neg()?, dir[2].neg()?];
+                if let Some(backward) =
+                    crossing_parity(point, reverse, &self.faces, &self.vertices, work)?
+                {
+                    return Ok(if slope < 0 {
+                        (forward, backward)
+                    } else {
+                        (backward, forward)
+                    });
+                }
+            }
+            // Only finitely many k give a parallel support or a nonzero hit
+            // on an edge. At the origin an internal coplanar seam is harmless:
+            // both rays leave its support, and neither counts the t=0 hit.
+            k = k.add(Q::ONE)?;
+        }
+    }
+
     /// Admits an exact indexed boundary and copies it into an owned result.
     ///
     /// Each coordinate is a (numerator, denominator) pair. Equivalent ratios
@@ -636,6 +672,30 @@ fn check_incidence(
     Ok(shells)
 }
 
+// The open interior of a nondegenerate triangle of vertices lies in the
+// open interior of its convex face, including when a side has subdivisions.
+pub(super) fn interior_sample(
+    plane: Plane3h,
+    mut points: impl Iterator<Item = P>,
+    work: &mut PolyhedralWork<'_>,
+) -> R<P> {
+    let a = points.next().ok_or(PolyhedralError::InvalidBoundary)?;
+    let b = points.next().ok_or(PolyhedralError::InvalidBoundary)?;
+    let chart = projection(plane)?;
+    for c in points {
+        work.charge(1)?;
+        if side(a, b, c, chart)? > 0 {
+            let third = Q::ratio(1, 3)?;
+            let mut p = [Q::ZERO; 3];
+            for k in 0..3 {
+                p[k] = a[k].add(b[k])?.add(c[k])?.mul(third)?;
+            }
+            return Ok(p);
+        }
+    }
+    Err(PolyhedralError::InvalidBoundary)
+}
+
 // Global parity assigns material to alternating nested regions. Matching every
 // edge in opposite directions enforces consistent orientation *within* a
 // shell. One strict face-interior sample then decides whether that entire shell
@@ -647,24 +707,7 @@ fn check_shell_orientation(
     work: &mut PolyhedralWork<'_>,
 ) -> R<()> {
     let face = &faces[index];
-    let a = vertices[face.indices[0]];
-    let b = vertices[face.indices[1]];
-    let chart = projection(face.plane)?;
-    let mut sample = None;
-    for &id in &face.indices[2..] {
-        work.charge(1)?;
-        let c = vertices[id];
-        if side(a, b, c, chart)? > 0 {
-            let third = Q::ratio(1, 3)?;
-            let mut p = [Q::ZERO; 3];
-            for k in 0..3 {
-                p[k] = a[k].add(b[k])?.add(c[k])?.mul(third)?;
-            }
-            sample = Some(p);
-            break;
-        }
-    }
-    let origin = sample.ok_or(PolyhedralError::InvalidBoundary)?;
+    let origin = interior_sample(face.plane, face.indices.iter().map(|&i| vertices[i]), work)?;
     // A direction parallel to a support or passing through an edge is
     // exceptional. For directions (1,k,k²), each such plane excludes at most
     // two k's. If the sample lies on an edge's infinite line, a nonparallel
@@ -765,6 +808,34 @@ mod tests {
 
     fn validate(facets: Vec<Facet>) -> R<SolidBoundary> {
         SolidBoundary::from_facets(facets, &mut PolyhedralWork::new(usize::MAX, usize::MAX))
+    }
+
+    #[test]
+    fn two_sided_membership_at_a_coplanar_subdivision_seam() {
+        let mut facets = tetrahedron(0, 6, false);
+        let base = facets.remove(2);
+        let [a, b, c] = base.vertices[..] else {
+            panic!("expected a triangular base")
+        };
+        let midpoint = [3, 3, 0].map(Q::int);
+        for triangle in [[a, b, midpoint], [a, midpoint, c]] {
+            facets.push(Facet {
+                plane: base.plane,
+                vertices: triangle.to_vec(),
+            });
+        }
+        let solid = validate(facets).unwrap();
+        let on_seam = [1, 1, 0].map(Q::int);
+        let mut work = PolyhedralWork::new(20_000, 0);
+        for (plane, expected) in [
+            (base.plane, (true, false)),
+            (base.plane.reversed(), (false, true)),
+        ] {
+            assert_eq!(
+                solid.material_sides_at(on_seam, plane, &mut work),
+                Ok(expected)
+            );
+        }
     }
 
     #[test]

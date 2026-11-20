@@ -2,9 +2,10 @@
 
 RCCT 0.2.0 is in development. The experimental `polyhedral` API implements a
 bounded convex halfspace path, indexed planar-face boundary admission, and
-Boolean operations on boundaries built from axis-aligned rectangular patches.
-Broader geometry, B-rep and Boolean operations remain
-in scope. The design requirements and acceptance cases below apply to the
+two operations for chaining results on restricted face domains. One accepts
+axis-aligned rectangles. The other accepts convex patches on horizontal caps
+and vertical walls. Broader geometry, B-rep and Boolean operations remain in
+scope. The design requirements and acceptance cases below apply to the
 milestone and still require qualification on a specified revision.
 
 ## Using the current API
@@ -60,9 +61,8 @@ so a cavity wall faces into the cavity. The checked arithmetic, work, storage
 and cancellation limits above apply throughout admission. To use the result
 in `boolean3`, first call `as_convex`. A valid nonconvex boundary returns
 `UnsupportedNonconvex` at this step. An indexed boundary whose patches are
-axis-aligned rectangles can go directly into `boolean_rectilinear3`. Curved and
-trimmed surfaces, general nonconvex Boolean operands and persistent CAD file
-formats remain open.
+axis-aligned rectangles can go directly into `boolean_rectilinear3`. For convex
+patches on horizontal caps and vertical walls, use `boolean_prismatic3`.
 
 ## Chaining rectilinear operations
 
@@ -100,6 +100,46 @@ Allocation includes the level lists, patch descriptors, emitted tiles and
 final boundary validation. Subdivisions can increase both the number of output
 faces and the cost of checking face pairs. Work, storage and arithmetic limits
 and cooperative cancellation apply throughout.
+
+## Chaining solids with oblique vertical walls
+
+`boolean_prismatic3(&a, &b, op, &mut work)` applies regularized union,
+intersection or difference to two admitted `SolidBoundary` values. In the
+input coordinate frame, each face normal `(a, b, c)` must satisfy either
+`c == 0` (vertical wall) or `a == b == 0` (horizontal cap). Wall directions
+can differ within a solid and between operands. Cap heights can also differ.
+The face loops can include conforming convex subdivisions, including
+triangles. A successful result uses faces on these same supports and can enter
+another call directly, including when the result is nonconvex.
+
+Each opposing support plane can split a convex source patch into smaller
+convex pieces. For each open piece, a rational point strictly inside it
+anchors two rays pointing to opposite sides of the source plane. Counting
+crossings in each direction determines which side contains opposing material.
+A ray parallel to a face or striking an edge ahead of the sample requires
+another direction. Only a change in the selected Boolean membership emits a
+patch. The first operand owns a coincident transition, so a shared internal
+face disappears from a union. The aggregate boundary undergoes the same
+seam, embedding, manifold and shell-orientation checks as convex results.
+
+The number of fragments grows with the cuts on each patch. Ray retries scan
+opposing faces and their edges, and final validation compares output faces.
+The checked rational arithmetic, work, storage and cancellation limits apply
+to this entire process. A face with both vertical and horizontal normal
+components yields `UnsupportedFaceGeometry`, even with an empty partner.
+An edge-only union that creates a nonmanifold boundary returns
+`NonManifoldResult`. Arithmetic overflow, exhausted budgets and cancellation
+yield `ArithmeticLimit`, `ResourceLimit` and `Cancelled`, respectively.
+
+For an exact acceptance case, shear the L and cutter from the rectilinear
+example using `(x, y, z) = (u + v/2, v, w)`. The determinant is one, so
+the clipped L must still have volume 7/3 and preserve the empty notch.
+Intersecting that result with the independently angled wall
+`x + y/2 <= 3/2` leaves a triangular prism of volume 49/72. In the original
+coordinates the base is bounded by `u >= 1/3`, `v >= 0` and `u + v <= 3/2`.
+Its perpendicular legs both measure 7/6 and its height is one.
+The [public fixtures](../tests/oblique_chain.rs) check the exact oriented cap
+outlines before and after the second operation.
 
 ## Design requirements for the wider milestone
 
@@ -214,8 +254,9 @@ These are acceptance targets. Passing evidence belongs to the exact revision and
 
 The first milestone retains acceptance cases P01–P16 and P18–P20. P06
 requires a typed nonmanifold result and P16 requires `as_convex` to return
-`UnsupportedNonconvex` for a nonconvex result. The rectilinear operation
-checks its own patch domain. P17 exact persistence, general operand closure and
-curved cases require separate qualification. Qualification of the
+`UnsupportedNonconvex` for a nonconvex result. The rectilinear and prismatic
+operations check their respective patch domains independently. Arbitrary
+nonconvex B-rep operands are planned after 0.2.0. P17 exact persistence and
+curved or trimmed cases require separate qualification. Qualification of the
 convex path must cover exact construction and refinement, face ownership
 and geometric admission within its documented arithmetic and resource limits.

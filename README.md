@@ -6,8 +6,8 @@ foundation and using Open CASCADE Technology (OCCT) as a functional reference.
 **0.2.0 is in development.** The latest published version is 0.1.1.
 The checkout includes planar arrangements and face selection, checked spatial
 primitives, combinatorial topology, exact indexed polyhedral boundaries, and
-experimental 3D Boolean operations on convex solids and on solid boundaries
-built from axis-aligned rectangular patches. The crate has no build script,
+experimental 3D Boolean operations on convex solids and on nonconvex solids
+with horizontal caps and vertical walls. The crate has no build script,
 third-party Rust dependencies, C++ bindings or native OCCT dependency.
 
 ## Use
@@ -71,7 +71,7 @@ order and direct component division.
   edge-use incidence and vertex-link diagnostics without geometric validity claims.
 - [Polyhedral Boolean contract](docs/polyhedral-boolean-contract.md) describes
   convex halfspace operands, admission of rational vertices and indexed planar
-  faces, and chaining operations on nonconvex rectangular-patch boundaries.
+  faces, and chaining operations on nonconvex solids with vertical walls.
 - [Raw segment and plane events](docs/segment-plane3.md): exact event classes
   and retained original-support crossing witnesses.
 - [Exact 3D orientation](docs/orientation3.md): raw finite-input determinant
@@ -136,11 +136,17 @@ implementations rather than reproduce their source, API, or internal structure.
   boundary can be re-admitted as an operand for `boolean3`. A result whose
   faces are axis-aligned rectangles can go directly into
   `boolean_rectilinear3` for another union, intersection or difference.
-  This includes nonconvex boundaries and cavities.
-- **Remaining v0.2.0 scope:** broader geometry, B-rep, and Boolean operations.
-  The convex milestone still requires qualification. Arbitrary B-rep inputs,
-  general nonconvex operand closure and curved solid Booleans remain open.
-- **Later direction:** additional modeling algorithms and exchange formats.
+  `boolean_prismatic3` accepts horizontal caps and vertical walls on
+  independently oriented rational planes. It takes the returned boundary
+  directly, including a nonconvex result. Each face must be an admitted
+  convex planar patch.
+- **Remaining v0.2.0 scope** includes qualification of broader geometry,
+  B-rep and Boolean operations. The numbered convex acceptance cases and
+  the bounded oblique cases require evidence on the selected release revision.
+  Curved and trimmed surfaces still require separate qualification.
+- **After 0.2.0**, the project plans to extend Boolean operations to arbitrary
+  nonconvex B-rep operands. Additional modeling algorithms and exchange
+  formats remain later directions.
 
 The roadmap is a statement of intended scope, not an OCCT compatibility promise,
 safety assurance, completed implementation, or delivery schedule.

@@ -14,6 +14,11 @@
   validated boundaries built from axis-aligned rectangular patches. The
   operation accepts nonconvex inputs in this domain and returns an owned
   boundary suitable for the next rectilinear operation.
+- Add `boolean_prismatic3` for regularized union, intersection and difference
+  on bounded solids with horizontal caps and vertical planar walls. The walls
+  of the two operands may have independent directions in the xy-plane.
+  Nonconvex results can enter the next call directly. A sloping face returns
+  `UnsupportedFaceGeometry`.
 - Include bounded planar arrangements and face-based 2D Boolean selection,
   checked spatial primitives and raw-input predicates, and combinatorial
   boundary and incidence diagnostics.
