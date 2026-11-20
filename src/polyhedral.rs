@@ -23,6 +23,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 mod admit;
 mod boundary;
+#[cfg(test)]
+mod cancellation;
 mod exact;
 mod prismatic;
 mod rectilinear;
@@ -88,6 +90,8 @@ pub struct PolyhedralWork<'a> {
     work_left: usize,
     bytes_left: usize,
     cancellation: Option<&'a AtomicBool>,
+    #[cfg(test)]
+    probe: Option<cancellation::Probe>,
 }
 
 impl<'a> PolyhedralWork<'a> {
@@ -97,6 +101,8 @@ impl<'a> PolyhedralWork<'a> {
             work_left: max_work,
             bytes_left: max_bytes,
             cancellation: None,
+            #[cfg(test)]
+            probe: None,
         }
     }
 
@@ -111,7 +117,16 @@ impl<'a> PolyhedralWork<'a> {
         (self.work_left, self.bytes_left)
     }
 
+    #[cfg_attr(test, track_caller)]
     fn charge(&mut self, units: usize) -> R<()> {
+        #[cfg(test)]
+        if let Some(probe) = &mut self.probe {
+            probe.observe(
+                std::panic::Location::caller(),
+                (self.work_left, self.bytes_left),
+                self.cancellation,
+            );
+        }
         if self
             .cancellation
             .is_some_and(|flag| flag.load(Ordering::Relaxed))
@@ -125,6 +140,7 @@ impl<'a> PolyhedralWork<'a> {
         Ok(())
     }
 
+    #[cfg_attr(test, track_caller)]
     fn reserve<T>(&mut self, vec: &mut Vec<T>, additional: usize) -> R<()> {
         self.charge(1)?;
         let needed = vec

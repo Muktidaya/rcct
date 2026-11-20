@@ -26,6 +26,7 @@ struct Piece {
     other: Sides,
 }
 
+#[cfg_attr(test, track_caller)]
 fn append<T>(out: &mut Vec<T>, item: T, work: &mut PolyhedralWork<'_>) -> R<()> {
     work.reserve(out, 1)?;
     out.push(item);
