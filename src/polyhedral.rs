@@ -7,7 +7,9 @@
 //! aborts the operation before it returns a boundary. All inputs stay immutable.
 //! An operation may produce a nonconvex solid, a cavity, or disjoint shells.
 //! Use [`SolidBoundary::as_convex`] to check a result before using it as another
-//! convex operand. Empty solids are represented explicitly.
+//! convex operand. [`SolidBoundary::from_indexed_faces`] also accepts exact
+//! rational vertices and oriented convex face loops with shared index seams.
+//! Empty solids are represented explicitly.
 //!
 //! Work and storage limits apply to one or more calls through the same meter.
 //! Exact arithmetic has a fixed 128-bit representation and checked intermediates.

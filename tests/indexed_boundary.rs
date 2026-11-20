@@ -108,6 +108,54 @@ fn rational_tetrahedron_survives_input_drop_and_clips_as_convex() {
 }
 
 #[test]
+fn indexed_l_prism_has_reentrant_edges_and_conforming_coplanar_faces() {
+    // Row-major vertices for three unit squares in an L, extruded from z=0 to z=1.
+    let xy: [[i64; 2]; 8] = [
+        [0, 0],
+        [1, 0],
+        [2, 0],
+        [0, 1],
+        [1, 1],
+        [2, 1],
+        [0, 2],
+        [1, 2],
+    ];
+    let mut shell = Shell {
+        points: Vec::new(),
+        faces: Vec::new(),
+    };
+    for z in [0, 1] {
+        shell
+            .points
+            .extend(xy.map(|[x, y]| [(i128::from(x), 1), (i128::from(y), 1), (z, 1)]));
+    }
+    for [a, b, c, d] in [[0, 1, 4, 3], [1, 2, 5, 4], [3, 4, 7, 6]] {
+        shell.faces.push((plane([0, 0, -1, 0]), vec![d, c, b, a]));
+        shell
+            .faces
+            .push((plane([0, 0, 1, -1]), vec![a + 8, b + 8, c + 8, d + 8]));
+    }
+    let perimeter = [0, 1, 2, 5, 4, 7, 6, 3, 0];
+    for edge in perimeter.windows(2) {
+        let (a, b) = (edge[0], edge[1]);
+        let [x, y] = xy[a];
+        let (nx, ny) = (xy[b][1] - y, x - xy[b][0]);
+        shell.faces.push((
+            plane([nx, ny, 0, -(nx * x + ny * y)]),
+            vec![a, b, b + 8, a + 8],
+        ));
+    }
+    let body = shell.import(&mut work()).unwrap();
+    assert_eq!(body.volume(), (3, 1));
+    assert_eq!((body.shell_count(), body.face_count()), (1, 14));
+    assert_eq!(Shell::read(&body).faces, shell.faces);
+    assert_eq!(
+        body.as_convex(&mut work()).unwrap_err(),
+        PolyhedralError::UnsupportedNonconvex
+    );
+}
+
+#[test]
 fn cavity_output_can_be_read_back_but_cannot_be_used_as_convex() {
     fn cube(lo: i64, hi: i64) -> ConvexSolid {
         let planes = [
@@ -264,15 +312,22 @@ fn rational_syntax_limits_and_cancellation_have_distinct_results() {
     );
     source.points[1][0] = (1, 2);
     let mut reference = work();
-    let before = reference.remaining().0;
+    let before = reference.remaining();
     assert_eq!(source.import(&mut reference).unwrap().volume(), (1, 24));
-    let one_short = before - reference.remaining().0 - 1;
+    let one_short = before.0 - reference.remaining().0 - 1;
     let mut tiny = PolyhedralWork::new(one_short, usize::MAX);
     assert_eq!(
         source.import(&mut tiny).unwrap_err(),
         PolyhedralError::ResourceLimit
     );
     assert!(tiny.remaining().0 < one_short);
+    let one_byte_short = before.1 - reference.remaining().1 - 1;
+    let mut almost_enough = PolyhedralWork::new(usize::MAX, one_byte_short);
+    assert_eq!(
+        source.import(&mut almost_enough).unwrap_err(),
+        PolyhedralError::ResourceLimit
+    );
+    assert!(almost_enough.remaining().1 < one_byte_short);
     let mut no_storage = PolyhedralWork::new(1_000, 0);
     assert_eq!(
         source.import(&mut no_storage).unwrap_err(),
