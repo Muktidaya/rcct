@@ -2,10 +2,16 @@
 
 //! Experimental, dependency-free geometry foundations for a pure-Rust CAD kernel.
 //!
-//! This crate implements Cartesian primitives and an initial exact planar
-//! predicate/topology slice, not a complete CAD kernel or an API-compatible
-//! replacement for Open CASCADE Technology (OCCT). Coordinates have
-//! caller-chosen units and share a right-handed frame.
+//! The `gp` primitives share a right-handed frame and caller-chosen units.
+//! [`planar`] builds bounded segment arrangements and selects faces by winding.
+//! [`spatial`] provides checked 3D primitives and exact raw-input predicates,
+//! and [`topology`] describes combinatorial boundaries and incidence.
+//!
+//! The experimental [`polyhedral`] module constructs bounded convex operands
+//! from integer halfspaces and provides regularized union, intersection and
+//! difference. Construction uses checked fixed-width rational arithmetic.
+//! Result reuse requires convex re-admission. General B-rep modeling and CAD
+//! exchange remain under development.
 //!
 //! Use [`gp::Point3`] for locations, [`gp::Vector3`] for displacements, and
 //! [`gp::UnitDirection3`] when magnitude should be discarded after validation.
@@ -43,5 +49,6 @@
 
 pub mod gp;
 pub mod planar;
+pub mod polyhedral;
 pub mod spatial;
 pub mod topology;

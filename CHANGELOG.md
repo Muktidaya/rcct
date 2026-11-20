@@ -1,12 +1,18 @@
 # Changelog
 
-## 0.2.0 (unreleased release preparation)
+## 0.2.0 (unreleased development)
 
-- Prepare the integrated candidate for 0.2.0 without publishing a package.
-- Propose Rust 1.100.0 as the minimum and exact project pin; this excludes
-  older supported 0.1.1 compilers and requires exact-candidate qualification.
-- The bounded alpha features below remain limited as documented; complete
-  B-rep, general 3D Booleans and a complete CAD kernel are not claimed.
+- Add an experimental `polyhedral` module for regularized union, intersection
+  and difference of bounded convex halfspace solids. Plane coefficients are
+  `i64`. Constructed vertices and volume use checked rational arithmetic with
+  `i128` components. Reuse a result only after convex re-admission.
+- Include bounded planar arrangements and face-based 2D Boolean selection,
+  checked spatial primitives and raw-input predicates, and combinatorial
+  boundary and incidence diagnostics.
+- Raise the development manifest's minimum Rust version from 1.85 to 1.100.0.
+  Existing `rcct::gp` calls retain their 0.1.1 API.
+- Broader geometry, B-rep and Boolean scope remains in development. General
+  3D Boolean robustness and safety qualification remain unestablished.
 
 ## 0.2.0-alpha.1 (historical unreleased development record)
 

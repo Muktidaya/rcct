@@ -1,14 +1,46 @@
-# Proposed first 3D polyhedral Boolean contract
+# Convex polyhedral Boolean milestone
 
-Status: design for future work. This document defines neither an implemented
-Boolean operation nor a release claim. The intended rcct 0.2.0 scope remains
-broad geometry, B-rep and Booleans. The initial convex-input milestone below
-is a dependency-ordered subset of that goal.
+RCCT 0.2.0 is in development. The experimental `polyhedral` API implements a
+bounded halfspace path. Broader geometry, B-rep and Boolean operations remain
+in scope. The design requirements and acceptance cases below apply to the
+milestone and still require qualification on a specified revision.
 
-## Model and operations
+## Using the current API
 
-Authoritative finite binary64 input coordinates denote their exact dyadic
-values. Subsequent rational or homogeneous constructions must retain exact
+1. Construct each oriented plane with `Plane3h::from_coefficients([a, b, c, d])`.
+   The four `i64` values define the closed halfspace `ax + by + cz + d <= 0`.
+   A zero normal is invalid. Positive scaling preserves the material side,
+   and sign reversal switches sides. Rational coefficients can be represented
+   when clearing denominators by a positive factor yields a row fitting `i64`.
+2. Pass the planes and a `PolyhedralWork` meter to `ConvexSolid::from_halfspaces`.
+   Admission requires a bounded convex intersection with positive interior.
+   Redundant planes are allowed. An infeasible set of constraints is an input
+   error. Use `ConvexSolid::empty()` for the explicit empty operand.
+3. Apply `boolean3` to two admitted operands with `Operation3::Union`,
+   `Intersection` or `Difference`. A successful `SolidBoundary` owns its
+   vertices, oriented face loops and supports. Its coordinates and volume
+   are accessible as reduced rational pairs. Face counts can include
+   coplanar subdivisions, and each cavity contributes a boundary shell.
+4. For a subsequent operation, call `SolidBoundary::as_convex`. It tests
+   vertices against outward face halfspaces and rebuilds the convex operand.
+   A nonconvex result can be inspected but fails convex re-admission.
+
+Construction uses checked `i128` rational arithmetic from admission through
+boundary assembly. No step converts a constructed point to binary64. Even
+when the input coefficients fit, an intermediate can exceed capacity and
+return `ArithmeticLimit`. The work meter limits operation checkpoints and
+cumulative requested vector storage, with cancellation checked cooperatively.
+The public constructor accepts integer halfspaces only. Arbitrary B-rep or
+polygon-soup inputs, nonconvex operands, curved geometry and general exact
+persistence require separate APIs.
+
+The [convex clipping example](../examples/convex_clip.rs) constructs both
+operands and inspects the rational volume.
+
+## Design requirements for the wider milestone
+
+For future input paths that accept finite binary64 coordinates, those values
+denote their exact dyadic coordinates. Subsequent rational or homogeneous constructions must retain exact
 mathematical definitions. Rounded display coordinates and approximate spatial
 plane offsets cannot authenticate equality, incidence, or material side.
 Uncertain measurements and any healing/snap policy are separate inputs or
@@ -92,7 +124,7 @@ cooperative, and bounded cancellation latency requires bounded primitives.
 
 ## Acceptance examples
 
-These are future tests, not passing results at this revision:
+These are acceptance targets. Passing evidence belongs to the exact revision and input domain tested.
 
 - Idempotence: `A ∪ A = A`, `A ∩ A = A`, and `A \ A = Empty` without duplicate
   coincident boundaries.
@@ -117,10 +149,9 @@ These are future tests, not passing results at this revision:
 - Each resource cap and cancellation path returns no partially validated result
   while recording work already consumed according to the operation contract.
 
-With sufficient resources, the first milestone must meet P01–P16 and P18–P20
-in the independent RCCT research handoff; P06's nonmanifold result and P16's
-unsupported nonconvex reuse are specified outcomes, not waived cases. P17 exact
-persistence and general operand closure belong to the separately qualified
-follow-on milestone. The handoff also specifies further curved cases. Exact
-numeric backend selection, repeated-cut closure, robust planar subdivision, face ownership and geometric admission are
-separate prerequisites; none is established by this design note.
+The first milestone retains acceptance cases P01–P16 and P18–P20. P06
+requires a typed nonmanifold result and P16 requires a typed failure for
+nonconvex reuse. P17 exact persistence, general operand closure and curved
+cases require separate qualification. Qualification of the
+convex path must cover exact construction and refinement, face ownership
+and geometric admission within its documented arithmetic and resource limits.

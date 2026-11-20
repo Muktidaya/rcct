@@ -3,17 +3,17 @@
 An independent **pure-Rust CAD-kernel project**, starting with a small geometry
 foundation and using Open CASCADE Technology (OCCT) as a functional reference.
 
-**Status: unreleased `0.2.0` release preparation.**
-The latest published version remains `0.1.1`. The crate provides elementary 3D
-geometry plus a first checked planar geometry and topology slice. It is not a
-complete CAD kernel, is not API-compatible with OCCT, and cannot import, model,
-mesh, or export CAD solids. There are no C++ bindings, native OCCT dependencies,
-build scripts, or third-party Rust dependencies.
+**0.2.0 is in development.** The latest published version is 0.1.1.
+The checkout includes planar arrangements and face selection, checked spatial
+primitives, combinatorial topology, and experimental 3D Boolean operations on
+convex polyhedra constructed from integer halfspaces. The crate has no build
+script, third-party Rust dependencies, C++ bindings or native OCCT dependency.
 
 ## Use
 
-The 0.2.0 checkout has not been published. For local development, reference
-the checkout by path:
+The development checkout requires Rust 1.100.0. When moving from 0.1.1,
+existing `rcct::gp` imports and constructors still apply. Consumers requiring
+Rust 1.85 can stay on 0.1.1. To try 0.2.0 locally, use a path dependency.
 
 ```toml
 [dependencies]
@@ -68,8 +68,9 @@ order and direct component division.
   and explicitly rounded line, plane, and quadratic curve evaluations.
 - [Combinatorial topology](docs/topology.md): scoped identity, declared boundaries,
   edge-use incidence and vertex-link diagnostics without geometric validity claims.
-- [Proposed polyhedral Boolean contract](docs/polyhedral-boolean-contract.md):
-  intended convex-input milestone, failure and validation boundaries.
+- [Polyhedral Boolean contract](docs/polyhedral-boolean-contract.md) describes
+  integer halfspace inputs, bounded rational construction, result reuse and
+  the remaining acceptance obligations.
 - [Raw segment and plane events](docs/segment-plane3.md): exact event classes
   and retained original-support crossing witnesses.
 - [Exact 3D orientation](docs/orientation3.md): raw finite-input determinant
@@ -98,12 +99,16 @@ order and direct component division.
   preliminary license, dependency and unsafe-code tradeoffs.
 - [Verification record](docs/verification.md): independent references,
   acceptance budgets, tagged-source compatibility checks, and exact CI evidence.
-- [Contribution guide](CONTRIBUTING.md): checks and source-provenance requirements.
+- [Contribution guide](https://github.com/Muktidaya/rcct/blob/root/CONTRIBUTING.md)
+  covers checks and source-provenance requirements.
 - [Displacement example](examples/displacement.rs): a small runnable translation,
   distance, and direction example.
+- [Convex clipping example](examples/convex_clip.rs) intersects a unit cube and
+  a tetrahedron and reads the exact volume of the result.
 
 ```sh
 cargo run --example displacement
+cargo run --example convex_clip
 cargo test --doc
 cargo doc --no-deps --all-features
 ```
@@ -121,13 +126,16 @@ implementations rather than reproduce their source, API, or internal structure.
 
 - **v0.1.1:** published elementary 3D point/vector/direction API, numerical
   contracts, and independent verification; it supports Rust 1.85.
-- **v0.2.0 in progress:** a first bounded slice adds checked finite planar
-  points and segments, exact orientation, exact segment-intersection event
-  classification, and simple closed-wire validation. A bounded raw-segment graph retains shared points,
-  edge pieces and source traversals. A separate stage groups simple walks into
-  faces; per-group winding supports bounded face-based 2D Boolean selection.
+- **v0.2.0 in progress.** Checked finite planar primitives and exact segment
+  events feed bounded arrangements and face-based 2D Booleans. The spatial
+  module adds exact raw-input 3D orientation and segment–plane classification.
+  The topology module records combinatorial boundary uses and incidence.
+  The experimental polyhedral module takes two admitted convex operands and
+  computes regularized union, intersection or difference within checked
+  arithmetic and resource limits.
 - **Remaining v0.2.0 scope:** broader geometry, B-rep, and Boolean operations.
-  General CAD and 3D Boolean operations require additional milestones.
+  The convex milestone still requires qualification. Arbitrary B-rep inputs,
+  nonconvex operand closure and curved solid Booleans remain open.
 - **Later direction:** additional modeling algorithms and exchange formats.
 
 The roadmap is a statement of intended scope, not an OCCT compatibility promise,

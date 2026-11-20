@@ -4,12 +4,11 @@ This unreleased candidate combines the reviewed public integration checkpoint
 `19d8f581522f0f9b35623f909f976e118eaa38ca` with release-preparation metadata.
 The canonical public `root` was `c83f03a12fc7d6db323a1b5b94aa63308bbcff00`
 at preparation and subsequently advanced to `fd65375947f5645729a0eee8ab3639de1863663d`.
-No package, tag or release publication is implied. This candidate
-contains the bounded planar, spatial and combinatorial topology capabilities
-and limitations documented in the integrated checkpoint. It does not include
-the separate private arithmetic/constructed-cut experiments, complete B-rep,
-general 3D Booleans or a complete CAD kernel. No package, tag or release is
-created by this preparation.
+The development checkout adds a bounded convex polyhedral Boolean path to the
+planar, spatial and combinatorial topology work. The wider 0.2.0 scope includes
+broader geometry, B-rep and Boolean operations. Qualification of this path and
+the remaining scope are open. The [polyhedral contract](polyhedral-boolean-contract.md)
+defines the public operand API and its acceptance targets.
 
 ## Version-reference inventory
 

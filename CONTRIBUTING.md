@@ -57,8 +57,12 @@ claims: neither has been established by this scaffold.
 
 ## Current architecture
 
-`src/gp.rs` owns the elementary geometry foundation. Later geometry, topology,
-modeling, and data-exchange layers are proposed directions, not existing APIs.
+The `gp` module owns elementary Cartesian geometry. The `planar`, `spatial`
+and `topology` modules cover planar arrangements, checked spatial primitives
+and combinatorial incidence respectively. The experimental `polyhedral` module
+builds convex operands from exact halfspaces and returns owned Boolean
+boundaries. Document changes to its admission domain, arithmetic limits or
+result reuse in the [polyhedral contract](docs/polyhedral-boolean-contract.md).
 Avoid advertising parity until specific operations have differential or other
 appropriate acceptance tests.
 
