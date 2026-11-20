@@ -6,8 +6,9 @@ foundation and using Open CASCADE Technology (OCCT) as a functional reference.
 **0.2.0 is in development.** The latest published version is 0.1.1.
 The checkout includes planar arrangements and face selection, checked spatial
 primitives, combinatorial topology, exact indexed polyhedral boundaries, and
-experimental 3D Boolean operations on admitted convex solids. The crate has no build
-script, third-party Rust dependencies, C++ bindings or native OCCT dependency.
+experimental 3D Boolean operations on convex solids and on solid boundaries
+built from axis-aligned rectangular patches. The crate has no build script,
+third-party Rust dependencies, C++ bindings or native OCCT dependency.
 
 ## Use
 
@@ -70,7 +71,7 @@ order and direct component division.
   edge-use incidence and vertex-link diagnostics without geometric validity claims.
 - [Polyhedral Boolean contract](docs/polyhedral-boolean-contract.md) describes
   convex halfspace operands, admission of rational vertices and indexed planar
-  faces, checked arithmetic, and convex reuse.
+  faces, and chaining operations on nonconvex rectangular-patch boundaries.
 - [Raw segment and plane events](docs/segment-plane3.md): exact event classes
   and retained original-support crossing witnesses.
 - [Exact 3D orientation](docs/orientation3.md): raw finite-input determinant
@@ -132,11 +133,13 @@ implementations rather than reproduce their source, API, or internal structure.
   The topology module records combinatorial boundary uses and incidence.
   The experimental polyhedral module admits closed boundaries from exact
   rational vertices and outward-oriented convex planar faces. A convex
-  boundary can be re-admitted as an operand for regularized union,
-  intersection or difference within checked arithmetic and resource limits.
+  boundary can be re-admitted as an operand for `boolean3`. A result whose
+  faces are axis-aligned rectangles can go directly into
+  `boolean_rectilinear3` for another union, intersection or difference.
+  This includes nonconvex boundaries and cavities.
 - **Remaining v0.2.0 scope:** broader geometry, B-rep, and Boolean operations.
   The convex milestone still requires qualification. Arbitrary B-rep inputs,
-  nonconvex operand closure and curved solid Booleans remain open.
+  general nonconvex operand closure and curved solid Booleans remain open.
 - **Later direction:** additional modeling algorithms and exchange formats.
 
 The roadmap is a statement of intended scope, not an OCCT compatibility promise,

@@ -9,7 +9,8 @@
 //! Use [`SolidBoundary::as_convex`] to check a result before using it as another
 //! convex operand. [`SolidBoundary::from_indexed_faces`] also accepts exact
 //! rational vertices and oriented convex face loops with shared index seams.
-//! Empty solids are represented explicitly.
+//! For rectangular patches parallel to the coordinate planes, [`boolean_rectilinear3`]
+//! also accepts nonconvex results directly. Empty solids are represented explicitly.
 //!
 //! Work and storage limits apply to one or more calls through the same meter.
 //! Exact arithmetic has a fixed 128-bit representation and checked intermediates.
@@ -21,10 +22,12 @@ use std::sync::atomic::{AtomicBool, Ordering};
 mod admit;
 mod boundary;
 mod exact;
+mod rectilinear;
 mod select;
 
 pub use admit::{ConvexSolid, Plane3h};
 pub use boundary::{IndexedFace, SolidBoundary};
+pub use rectilinear::boolean_rectilinear3;
 
 use exact::P;
 
@@ -57,6 +60,8 @@ pub enum PolyhedralError {
     NonManifoldResult,
     /// A valid result cannot be reused as a convex operand.
     UnsupportedNonconvex,
+    /// A boundary patch falls outside the rectangular face domain of a rectilinear operation.
+    UnsupportedFaceGeometry,
 }
 
 impl std::fmt::Display for PolyhedralError {

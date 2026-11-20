@@ -7,11 +7,11 @@
 //! [`spatial`] provides checked 3D primitives and exact raw-input predicates,
 //! and [`topology`] describes combinatorial boundaries and incidence.
 //!
-//! The experimental [`polyhedral`] module constructs bounded convex operands
-//! from integer halfspaces and provides regularized union, intersection and
-//! difference. Construction uses checked fixed-width rational arithmetic.
-//! Result reuse requires convex re-admission. General B-rep modeling and CAD
-//! exchange remain under development.
+//! The experimental [`polyhedral`] module admits convex halfspace operands
+//! and exact indexed planar-face boundaries. [`polyhedral::boolean3`] takes
+//! convex operands. [`polyhedral::boolean_rectilinear3`] accepts boundaries
+//! built from axis-aligned rectangular patches, including nonconvex results
+//! from earlier operations. Both use checked fixed-width rational arithmetic.
 //!
 //! Use [`gp::Point3`] for locations, [`gp::Vector3`] for displacements, and
 //! [`gp::UnitDirection3`] when magnitude should be discarded after validation.

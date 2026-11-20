@@ -1,7 +1,8 @@
-# Convex polyhedral Boolean milestone
+# Polyhedral Boolean operations
 
 RCCT 0.2.0 is in development. The experimental `polyhedral` API implements a
-bounded convex halfspace path and indexed planar-face boundary admission.
+bounded convex halfspace path, indexed planar-face boundary admission, and
+Boolean operations on boundaries built from axis-aligned rectangular patches.
 Broader geometry, B-rep and Boolean operations remain
 in scope. The design requirements and acceptance cases below apply to the
 milestone and still require qualification on a specified revision.
@@ -22,7 +23,7 @@ milestone and still require qualification on a specified revision.
    vertices, oriented face loops and supports. Its coordinates and volume
    are accessible as reduced rational pairs. Face counts can include
    coplanar subdivisions, and each cavity contributes a boundary shell.
-4. For a subsequent operation, call `SolidBoundary::as_convex`. It tests
+4. For a subsequent call to `boolean3`, use `SolidBoundary::as_convex`. It tests
    vertices against outward face halfspaces and rebuilds the convex operand.
    A nonconvex result can be inspected but fails convex re-admission.
 
@@ -58,8 +59,47 @@ Each shell must bound material on the correct side for its nesting depth,
 so a cavity wall faces into the cavity. The checked arithmetic, work, storage
 and cancellation limits above apply throughout admission. To use the result
 in `boolean3`, first call `as_convex`. A valid nonconvex boundary returns
-`UnsupportedNonconvex` at this step. Curved and trimmed surfaces, general
-nonconvex Boolean operands and persistent CAD file formats remain open.
+`UnsupportedNonconvex` at this step. An indexed boundary whose patches are
+axis-aligned rectangles can go directly into `boolean_rectilinear3`. Curved and
+trimmed surfaces, general nonconvex Boolean operands and persistent CAD file
+formats remain open.
+
+## Chaining rectilinear operations
+
+`boolean_rectilinear3(&a, &b, op, &mut work)` takes two validated
+`SolidBoundary` values. Every face must be a rectangle parallel to a coordinate
+plane with edges parallel to the coordinate axes. Collinear seam vertices on
+a rectangle are allowed. A square split along a diagonal is represented by two
+triangles and returns `UnsupportedFaceGeometry`. An oblique support plane
+also returns that error. The operation checks both operands even if one is empty.
+
+Within this domain, operands can be nonconvex and can enclose cavities or
+disconnected components. The result owns its rectangular boundary patches and
+can enter a subsequent rectilinear union, intersection or difference directly.
+For example, union the boxes `[0,2] × [0,1] × [0,1]` and
+`[0,1] × [0,2] × [0,1]` with `boolean3` to form an L of volume 3.
+Intersect that boundary with `[1/3,2] × [0,2] × [0,1]` using
+`boolean_rectilinear3`. The expected volume is `3 − 2/3 = 7/3`, and the
+upper-right unit square of the top face remains empty. The fixture checks
+both volume and cap coverage. [Chaining fixture](../tests/rectilinear_chain.rs)
+
+For each coordinate axis, patch bounds from both inputs define exact rational
+levels. Two consecutive levels on each transverse axis bound an open
+rectangular column. The sweep starts outside both solids. At a level where a
+patch covers that column, its orientation records entry into or exit from one
+operand. The sweep applies both operands' events at the same level before
+comparing the Boolean membership on the two sides. A change emits one
+outward-oriented rectangular tile. A shared internal face therefore vanishes
+from a union. The aggregate boundary must still pass the manifold and shell
+checks, including at edge-only or point-only contacts.
+
+With `X`, `Y` and `Z` distinct coordinate levels, the x-axis sweep visits
+`X × (Y−1) × (Z−1)` column levels for nonempty operands. The y and z sweeps
+use the corresponding cyclic counts. Each visit scans the input patches.
+Allocation includes the level lists, patch descriptors, emitted tiles and
+final boundary validation. Subdivisions can increase both the number of output
+faces and the cost of checking face pairs. Work, storage and arithmetic limits
+and cooperative cancellation apply throughout.
 
 ## Design requirements for the wider milestone
 
@@ -173,8 +213,9 @@ These are acceptance targets. Passing evidence belongs to the exact revision and
   while recording work already consumed according to the operation contract.
 
 The first milestone retains acceptance cases P01–P16 and P18–P20. P06
-requires a typed nonmanifold result and P16 requires a typed failure for
-nonconvex reuse. P17 exact persistence, general operand closure and curved
-cases require separate qualification. Qualification of the
+requires a typed nonmanifold result and P16 requires `as_convex` to return
+`UnsupportedNonconvex` for a nonconvex result. The rectilinear operation
+checks its own patch domain. P17 exact persistence, general operand closure and
+curved cases require separate qualification. Qualification of the
 convex path must cover exact construction and refinement, face ownership
 and geometric admission within its documented arithmetic and resource limits.

@@ -103,7 +103,9 @@ impl SolidBoundary {
     /// manifold with outward outer shells and inward cavity shells. Validation
     /// preserves vertex and face order and requires no tolerance or coordinate
     /// snapping. A successful result can have multiple shells or be nonconvex.
-    /// Use [`Self::as_convex`] to check admission as a Boolean operand.
+    /// [`Self::as_convex`] checks admission for [`super::boolean3`]. A boundary
+    /// made of axis-aligned rectangular patches can also be passed directly to
+    /// [`super::boolean_rectilinear3`].
     pub fn from_indexed_faces(
         coordinates: &[[(i128, i128); 3]],
         faces: &[IndexedFace<'_>],
